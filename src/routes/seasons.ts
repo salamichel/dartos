@@ -2,7 +2,6 @@ import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { createSeasonSchema } from "../schemas";
-import { pointsForRank } from "../scoring";
 
 export const seasonsRouter = Router();
 
@@ -28,7 +27,7 @@ seasonsRouter.get("/", async (_req, res) => {
 });
 
 // GET /seasons/:id/leaderboard
-// Computes total points and average points per match for every player who
+// Computes total XP and average XP per match for every player who
 // participated in at least one match of the season.
 seasonsRouter.get("/:id/leaderboard", async (req, res) => {
   const seasonId = Number(req.params.id);
@@ -48,7 +47,7 @@ seasonsRouter.get("/:id/leaderboard", async (req, res) => {
     playerId: number;
     playerName: string;
     matchesPlayed: number;
-    totalPoints: number;
+    totalXP: number;
     wins: number;
   };
   const byPlayer = new Map<number, Agg>();
@@ -59,24 +58,28 @@ seasonsRouter.get("/:id/leaderboard", async (req, res) => {
         playerId: p.playerId,
         playerName: p.player.name,
         matchesPlayed: 0,
-        totalPoints: 0,
+        totalXP: 0,
         wins: 0,
       };
     entry.matchesPlayed += 1;
-    entry.totalPoints += pointsForRank(p.rank);
+    entry.totalXP += p.xpEarned;
     if (p.rank === 1) entry.wins += 1;
     byPlayer.set(p.playerId, entry);
   }
 
   const leaderboard = Array.from(byPlayer.values())
-    .map((e) => ({
-      ...e,
-      averagePoints: Number((e.totalPoints / e.matchesPlayed).toFixed(3)),
-    }))
+    .map((e) => {
+      // Clamping season total XP at 0 as well for consistency
+      const clampedXP = Math.max(0, e.totalXP);
+      return {
+        ...e,
+        totalXP: clampedXP,
+        averageXP: Number((clampedXP / e.matchesPlayed).toFixed(2)),
+      };
+    })
     .sort((a, b) => {
-      // Primary ranking metric is the average to avoid penalizing newcomers.
-      if (b.averagePoints !== a.averagePoints) return b.averagePoints - a.averagePoints;
-      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+      if (b.totalXP !== a.totalXP) return b.totalXP - a.totalXP;
+      if (b.averageXP !== a.averageXP) return b.averageXP - a.averageXP;
       return b.wins - a.wins;
     })
     .map((e, i) => ({ position: i + 1, ...e }));
