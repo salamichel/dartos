@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db";
 import { recordMatchSchema } from "../schemas";
+import { calculateMatchResults, FinishType } from "../scoring";
 
 export const matchesRouter = Router();
 
@@ -10,7 +11,7 @@ matchesRouter.post("/", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
-  const { seasonId, playedAt, participants } = parsed.data;
+  const { seasonId, playedAt, winner, losers } = parsed.data;
 
   const season = await prisma.season.findUnique({ where: { id: seasonId } });
   if (!season) return res.status(404).json({ error: "Season not found" });
@@ -18,26 +19,30 @@ matchesRouter.post("/", async (req, res) => {
     return res.status(409).json({ error: "Season is closed" });
   }
 
-  const playerIds = participants.map((p) => p.playerId);
+  const allPlayerIds = [winner.playerId, ...losers.map(l => l.playerId)];
   const foundPlayers = await prisma.player.findMany({
-    where: { id: { in: playerIds } },
+    where: { id: { in: allPlayerIds } },
     select: { id: true },
   });
-  if (foundPlayers.length !== playerIds.length) {
+  if (foundPlayers.length !== allPlayerIds.length) {
     const found = new Set(foundPlayers.map((p) => p.id));
-    const missing = playerIds.filter((id) => !found.has(id));
+    const missing = allPlayerIds.filter((id) => !found.has(id));
     return res.status(400).json({ error: "Unknown player ids", missing });
   }
+
+  const results = calculateMatchResults(winner.playerId, winner.finishType as FinishType, losers);
 
   const match = await prisma.match.create({
     data: {
       seasonId,
       playedAt: playedAt ?? new Date(),
       participants: {
-        create: participants.map((p) => ({
-          playerId: p.playerId,
-          rank: p.rank,
-          scoreLeft: p.scoreLeft ?? null,
+        create: results.map((r) => ({
+          playerId: r.playerId,
+          rank: r.rank,
+          scoreLeft: r.scoreLeft,
+          xpEarned: r.xpEarned,
+          finishType: r.finishType,
         })),
       },
     },

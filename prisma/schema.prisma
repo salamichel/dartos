@@ -2,7 +2,7 @@
 //
 // A Season groups Matches over a period (multiple days/weeks).
 // A Match opposes 2..N players, with a MatchParticipant join row carrying
-// the final rank and (for the last player only) the remaining score.
+// the final rank, score left (for losers), xp earned, and finish type (for winner).
 
 generator client {
   provider      = "prisma-client-js"
@@ -46,10 +46,12 @@ model Match {
 }
 
 model MatchParticipant {
-  matchId   Int  @map("match_id")
-  playerId  Int  @map("player_id")
-  rank      Int
-  scoreLeft Int? @map("score_left") // only set for the last (losing) player
+  matchId    Int     @map("match_id")
+  playerId   Int     @map("player_id")
+  rank       Int
+  scoreLeft  Int?    @map("score_left") // set for all losers
+  xpEarned   Int     @default(0) @map("xp_earned")
+  finishType String? @map("finish_type") // set for the winner ('SIMPLE', 'DOUBLE', 'TRIPLE')
 
   match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
   player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)

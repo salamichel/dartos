@@ -3,6 +3,7 @@ import express, { NextFunction, Request, Response } from "express";
 import { playersRouter } from "./routes/players";
 import { seasonsRouter } from "./routes/seasons";
 import { matchesRouter } from "./routes/matches";
+import { leaderboardRouter } from "./routes/leaderboard";
 
 const app = express();
 app.use(express.json());
@@ -12,6 +13,7 @@ app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/players", playersRouter);
 app.use("/seasons", seasonsRouter);
 app.use("/matches", matchesRouter);
+app.use("/leaderboard", leaderboardRouter);
 
 // Static web UI. `public/` sits at the project root, alongside `dist/`.
 app.use(express.static(path.join(__dirname, "..", "public")));

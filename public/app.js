@@ -16,7 +16,7 @@ const api = {
   createSeason: (name) => api.req("/seasons", { method: "POST", body: JSON.stringify({ name }) }),
   listMatches: (seasonId) => api.req("/matches" + (seasonId ? `?seasonId=${seasonId}` : "")),
   recordMatch: (payload) => api.req("/matches", { method: "POST", body: JSON.stringify(payload) }),
-  leaderboard: (seasonId) => api.req(`/seasons/${seasonId}/leaderboard`),
+  leaderboard: () => api.req(`/leaderboard`),
 };
 
 let players = [];
@@ -78,6 +78,7 @@ async function refreshSeasons() {
   }
   for (const id of ["lb-season", "m-season", "ml-season"]) {
     const sel = document.getElementById(id);
+    if (!sel) continue;
     const prev = sel.value;
     const keepAll = id === "ml-season";
     sel.innerHTML = keepAll ? '<option value="">Toutes</option>' : "";
@@ -110,20 +111,37 @@ const participantsEl = document.getElementById("m-participants");
 
 function addParticipantRow() {
   const row = document.createElement("div");
+  const i = participantsEl.children.length;
   row.className = "participant-row";
-  row.innerHTML = `
-    <div class="rank"></div>
-    <select class="p-select"></select>
-    <input type="number" class="p-score" placeholder="score restant" min="1" max="301" />
-    <button type="button" class="remove">×</button>
-  `;
+  
+  if (i === 0) {
+    // Winner row
+    row.innerHTML = `
+      <div class="rank">🏆</div>
+      <select class="p-select" required></select>
+      <select class="p-finish" title="Finition">
+        <option value="SIMPLE">Finition SIMPLE</option>
+        <option value="DOUBLE">Finition DOUBLE</option>
+        <option value="TRIPLE">Finition TRIPLE / BULLE</option>
+      </select>
+      <div style="width: 32px"></div>
+    `;
+  } else {
+    // Loser row
+    row.innerHTML = `
+      <div class="rank">${i + 1}e</div>
+      <select class="p-select" required></select>
+      <input type="number" class="p-score" placeholder="Score restant" min="1" max="301" required />
+      <button type="button" class="remove">×</button>
+    `;
+    row.querySelector(".remove").addEventListener("click", () => {
+      row.remove();
+      refreshRanks();
+    });
+  }
+  
   participantsEl.appendChild(row);
-  row.querySelector(".remove").addEventListener("click", () => {
-    row.remove();
-    refreshRanks();
-  });
   refreshParticipantOptions();
-  refreshRanks();
 }
 
 function refreshParticipantOptions() {
@@ -144,11 +162,12 @@ function refreshParticipantOptions() {
 function refreshRanks() {
   const rows = [...participantsEl.querySelectorAll(".participant-row")];
   rows.forEach((row, i) => {
-    row.querySelector(".rank").textContent = i + 1 + (i === 0 ? "er" : "ᵉ");
-    const isLast = i === rows.length - 1 && rows.length >= 2;
-    const score = row.querySelector(".p-score");
-    score.disabled = !isLast;
-    if (!isLast) score.value = "";
+    const rankEl = row.querySelector(".rank");
+    if (i === 0) {
+      rankEl.textContent = "🏆";
+    } else {
+      rankEl.textContent = (i + 1) + "e";
+    }
   });
 }
 
@@ -162,29 +181,36 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
   const rows = [...participantsEl.querySelectorAll(".participant-row")];
 
   if (rows.length < 2) {
-    return setStatus(status, "Il faut au moins 2 participants", false);
-  }
-  const participants = rows.map((row, i) => {
-    const playerId = Number(row.querySelector(".p-select").value);
-    const rank = i + 1;
-    const scoreRaw = row.querySelector(".p-score").value;
-    const p = { playerId, rank };
-    if (i === rows.length - 1 && scoreRaw) p.scoreLeft = Number(scoreRaw);
-    return p;
-  });
-  if (participants.some((p) => !p.playerId)) {
-    return setStatus(status, "Chaque ligne doit avoir un joueur", false);
+    return setStatus(status, "Il faut au moins 2 participants (1 gagnant + 1 perdant)", false);
   }
 
-  const payload = { seasonId, participants };
+  const winnerRow = rows[0];
+  const winnerId = Number(winnerRow.querySelector(".p-select").value);
+  const finishType = winnerRow.querySelector(".p-finish").value;
+
+  const losers = rows.slice(1).map((row) => {
+    const playerId = Number(row.querySelector(".p-select").value);
+    const scoreLeft = Number(row.querySelector(".p-score").value);
+    return { playerId, scoreLeft };
+  });
+
+  if (!winnerId || losers.some((l) => !l.playerId || !l.scoreLeft)) {
+    return setStatus(status, "Tous les champs sont requis", false);
+  }
+
+  const payload = { 
+    seasonId, 
+    winner: { playerId: winnerId, finishType },
+    losers
+  };
   if (playedAtRaw) payload.playedAt = new Date(playedAtRaw).toISOString();
 
   try {
     await api.recordMatch(payload);
     setStatus(status, "Match enregistré ✓", true);
     participantsEl.innerHTML = "";
-    addParticipantRow();
-    addParticipantRow();
+    addParticipantRow(); // winner
+    addParticipantRow(); // one loser
   } catch (err) {
     setStatus(status, err.message, false);
   }
@@ -207,11 +233,12 @@ async function refreshMatchesList() {
     const sorted = [...m.participants].sort((a, b) => a.rank - b.rank);
     const lis = sorted
       .map((p) => {
-        const tail = p.scoreLeft != null ? ` <span class="muted">(reste ${p.scoreLeft})</span>` : "";
-        return `<li>${escapeHtml(p.player.name)}${tail}</li>`;
+        const detail = p.rank === 1 ? ` (Finition ${p.finishType})` : ` (Reste ${p.scoreLeft})`;
+        const xp = `<span class="xp-gain ${p.xpEarned >= 0 ? "plus" : "minus"}">${p.xpEarned >= 0 ? "+" : ""}${p.xpEarned} XP</span>`;
+        return `<li><strong>${p.rank}.</strong> ${escapeHtml(p.player.name)}${detail} — ${xp}</li>`;
       })
       .join("");
-    card.innerHTML = `<header><strong>Match #${m.id}</strong> <span class="when">${when}</span></header><ol>${lis}</ol>`;
+    card.innerHTML = `<header><strong>Match #${m.id}</strong> <span class="when">${when}</span></header><ul>${lis}</ul>`;
     container.appendChild(card);
   }
 }
@@ -219,22 +246,27 @@ document.getElementById("ml-refresh").addEventListener("click", refreshMatchesLi
 
 // ----- Leaderboard -----
 async function refreshLeaderboard() {
-  const seasonId = document.getElementById("lb-season").value;
-  if (!seasonId) return;
-  const data = await api.leaderboard(seasonId);
+  const data = await api.leaderboard();
   const tbody = document.querySelector("#lb-table tbody");
   tbody.innerHTML = "";
   const empty = document.getElementById("lb-empty");
-  if (!data.leaderboard.length) {
+  if (!data.length) {
     empty.classList.remove("hidden");
     return;
   }
   empty.classList.add("hidden");
-  for (const r of data.leaderboard) {
+  data.forEach((r, i) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${r.position}</td><td>${escapeHtml(r.playerName)}</td><td>${r.matchesPlayed}</td><td>${r.wins}</td><td>${r.totalPoints}</td><td>${r.averagePoints.toFixed(2)}</td>`;
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td><strong>${escapeHtml(r.name)}</strong></td>
+      <td>${r.matchCount}</td>
+      <td>${r.totalXP}</td>
+      <td>${r.xpPerMatch}</td>
+      <td><span class="level-badge">${r.level}</span></td>
+    `;
     tbody.appendChild(tr);
-  }
+  });
 }
 document.getElementById("lb-refresh").addEventListener("click", refreshLeaderboard);
 document.getElementById("lb-season").addEventListener("change", refreshLeaderboard);

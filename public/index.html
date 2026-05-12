@@ -27,25 +27,35 @@
       <button id="lb-refresh">Rafraîchir</button>
       <table id="lb-table">
         <thead>
-          <tr><th>#</th><th>Joueur</th><th>Matchs</th><th>Victoires</th><th>Points</th><th>Moy.</th></tr>
+          <tr><th>#</th><th>Joueur</th><th>Matchs</th><th>XP Total</th><th>Moy. XP</th><th>Niveau</th></tr>
         </thead>
         <tbody></tbody>
       </table>
-      <p id="lb-empty" class="muted hidden">Aucun match dans cette saison pour l'instant.</p>
+      <p id="lb-empty" class="muted hidden">Aucun match enregistré pour l'instant.</p>
 
       <details class="scoring-help">
-        <summary>Comment sont calculés les points ?</summary>
-        <p>À chaque match, les joueurs marquent des points selon leur place :</p>
-        <ul class="scoring-list">
-          <li><span class="rank-badge">1<sup>er</sup></span> 10 points</li>
-          <li><span class="rank-badge">2<sup>e</sup></span> 6 points</li>
-          <li><span class="rank-badge">3<sup>e</sup></span> 4 points</li>
-          <li><span class="rank-badge">4<sup>e</sup></span> 2 points</li>
-          <li><span class="rank-badge">5<sup>e</sup>+</span> 1 point</li>
-        </ul>
-        <p>Le classement se fait sur la <strong>moyenne de points par match</strong>,
-          pour ne pas pénaliser les joueurs qui rejoignent la ligue en cours de saison.
-          En cas d'égalité&nbsp;: total de points, puis nombre de victoires.</p>
+        <summary>Calcul de l'XP (Système RPG)</summary>
+        <p>Le match s'arrête à la "Mort Subite" (un joueur à 0).</p>
+        
+        <div class="rules-grid">
+          <div>
+            <h4>🏆 Le Vainqueur</h4>
+            <ul>
+              <li><strong>Bataille Royale</strong> : +50 XP par adversaire.</li>
+              <li><strong>Panache</strong> : Double (+50 XP), Triple (+100 XP).</li>
+              <li><strong>Vampire</strong> : +1 XP par point restant sur la cible.</li>
+            </ul>
+          </div>
+          <div>
+            <h4>💀 Les Perdants</h4>
+            <ul>
+              <li><strong>Survivants</strong> : Forfait de +20 XP.</li>
+              <li><strong>Cul Rouge (Dernier)</strong> : +20 XP - (Score restant / 2).</li>
+            </ul>
+          </div>
+        </div>
+        
+        <p class="levels-info">Niveaux : Pousse-Caillou (0), Lanceur du Dimanche (500), Sniper de Comptoir (2000), Maître du 301 (5000), Phil Taylor (10000).</p>
       </details>
     </section>
 
