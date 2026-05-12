@@ -26,4 +26,4 @@ services:
       DATABASE_URL: postgresql://dartos:dartos@db:5432/dartos?schema=public
       PORT: "3000"
     ports:
-      - "3000:3000"
+      - "8030:3000"
