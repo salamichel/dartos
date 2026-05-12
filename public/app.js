@@ -129,7 +129,7 @@ function addParticipantRow() {
   } else {
     // Loser row
     row.innerHTML = `
-      <div class="rank">${i + 1}e</div>
+      <div class="rank">💀</div>
       <select class="p-select" required></select>
       <input type="number" class="p-score" placeholder="Score restant" min="1" max="301" required />
       <button type="button" class="remove">×</button>
@@ -166,7 +166,7 @@ function refreshRanks() {
     if (i === 0) {
       rankEl.textContent = "🏆";
     } else {
-      rankEl.textContent = (i + 1) + "e";
+      rankEl.textContent = "💀";
     }
   });
 }
