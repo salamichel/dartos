@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - dartos_pg:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dartos -d dartos"]
       interval: 5s
@@ -27,6 +27,3 @@ services:
       PORT: "3000"
     ports:
       - "3000:3000"
-
-volumes:
-  dartos_pg:
