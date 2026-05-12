@@ -1,0 +1,60 @@
+// Prisma schema for the Darts (301) league management system.
+//
+// A Season groups Matches over a period (multiple days/weeks).
+// A Match opposes 2..N players, with a MatchParticipant join row carrying
+// the final rank and (for the last player only) the remaining score.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Player {
+  id           Int                @id @default(autoincrement())
+  name         String             @unique
+  createdAt    DateTime           @default(now()) @map("created_at")
+  participations MatchParticipant[]
+
+  @@map("players")
+}
+
+model Season {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  startedAt DateTime  @default(now()) @map("started_at")
+  endedAt   DateTime? @map("ended_at")
+  matches   Match[]
+
+  @@map("seasons")
+}
+
+model Match {
+  id           Int                @id @default(autoincrement())
+  seasonId     Int                @map("season_id")
+  playedAt     DateTime           @default(now()) @map("played_at")
+  season       Season             @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  participants MatchParticipant[]
+
+  @@index([seasonId])
+  @@index([playedAt])
+  @@map("matches")
+}
+
+model MatchParticipant {
+  matchId   Int  @map("match_id")
+  playerId  Int  @map("player_id")
+  rank      Int
+  scoreLeft Int? @map("score_left") // only set for the last (losing) player
+
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)
+
+  @@id([matchId, playerId])
+  @@unique([matchId, rank])
+  @@index([playerId])
+  @@map("match_participants")
+}
