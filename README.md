@@ -25,13 +25,12 @@ API on http://localhost:3000. Web UI on the same URL (`/`).
 Player (id, name, created_at)
 Season (id, name, started_at, ended_at?)
 Match  (id, season_id -> Season, played_at)
-MatchParticipant (match_id, player_id, rank, score_left?)   -- M:N + result
+MatchParticipant (match_id, player_id, rank, score_left?, xp_earned, finish_type?) -- M:N + result
   PK (match_id, player_id)
   UNIQUE (match_id, rank)        -- no rank ties
 ```
 
-`score_left` is set **only** for the last-ranked (losing) player; everyone
-else closed out at 0.
+`score_left` is set for **all** losing players. `finish_type` (SIMPLE, DOUBLE, TRIPLE) is set for the winner.
 
 ## Endpoints
 
@@ -45,34 +44,51 @@ else closed out at 0.
 { "name": "Spring 2026" }
 ```
 
-### `POST /matches` — record a finished match
+### `POST /matches` — record a finished match (Sudden Death)
 ```json
 {
   "seasonId": 1,
-  "participants": [
-    { "playerId": 1, "rank": 1 },
-    { "playerId": 2, "rank": 2 },
-    { "playerId": 3, "rank": 3, "scoreLeft": 84 }
+  "winner": {
+    "playerId": 1,
+    "finishType": "DOUBLE"
+  },
+  "losers": [
+    { "playerId": 2, "scoreLeft": 42 },
+    { "playerId": 3, "scoreLeft": 120 }
   ]
 }
 ```
 Validation enforced server-side:
-- ≥ 2 participants, unique players
-- ranks form a permutation of `1..N`
-- only the rank-N participant carries `scoreLeft`, and it must be `> 0`
+- ≥ 2 participants, unique players.
+- Winner rank is 1. Losers are ranked automatically by `scoreLeft` ascending.
 
-### `GET /seasons/:id/leaderboard`
-Computes points per match (1st=10, 2nd=6, 3rd=4, 4th=2, others=1) and ranks
-players by **average points per match** (tiebreakers: total points, wins).
-Using the average avoids penalizing newcomers who joined the league late.
+### `GET /leaderboard`
+Returns the global leaderboard with RPG-style progression.
+
+**XP Rules:**
+1. **Winner**:
+   - +50 XP per defeated opponent.
+   - Bonus Finition: Simple (+0), Double (+50), Triple/Bulle (+100).
+   - Zone Vampire: +1 XP per remaining point on the board (sum of losers' `scoreLeft`).
+2. **Survivors** (intermediate losers): +20 XP.
+3. **Cul Rouge** (highest score remaining): +20 XP - (scoreLeft / 2).
+
+**Levels:**
+- Lvl 1: Pousse-Caillou (0 - 499 XP)
+- Lvl 2: Lanceur du Dimanche (500 - 1999 XP)
+- Lvl 3: Sniper de Comptoir (2000 - 4999 XP)
+- Lvl 4: Maître du 301 (5000 - 9999 XP)
+- Lvl 5: Phil Taylor (10000+ XP)
 
 ```json
-{
-  "seasonId": 1,
-  "seasonName": "Spring 2026",
-  "leaderboard": [
-    { "position": 1, "playerId": 1, "playerName": "Alice",
-      "matchesPlayed": 8, "totalPoints": 72, "wins": 5, "averagePoints": 9.0 }
-  ]
-}
+[
+  {
+    "id": 1,
+    "name": "Alice",
+    "totalXP": 1250,
+    "matchCount": 8,
+    "xpPerMatch": 156.25,
+    "level": "Lanceur du Dimanche"
+  }
+]
 ```
