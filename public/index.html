@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>dartos — Ligue de fléchettes 301</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>dartos</h1>
+    <nav>
+      <button data-tab="leaderboard" class="active">Classement</button>
+      <button data-tab="match">Nouveau match</button>
+      <button data-tab="matches">Matchs</button>
+      <button data-tab="players">Joueurs</button>
+      <button data-tab="seasons">Saisons</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="tab-leaderboard" class="tab active">
+      <h2>Classement</h2>
+      <label>Saison
+        <select id="lb-season"></select>
+      </label>
+      <button id="lb-refresh">Rafraîchir</button>
+      <table id="lb-table">
+        <thead>
+          <tr><th>#</th><th>Joueur</th><th>Matchs</th><th>Victoires</th><th>Points</th><th>Moy.</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="lb-empty" class="muted hidden">Aucun match dans cette saison pour l'instant.</p>
+    </section>
+
+    <section id="tab-match" class="tab">
+      <h2>Enregistrer un match terminé</h2>
+      <form id="match-form">
+        <label>Saison
+          <select id="m-season" required></select>
+        </label>
+        <label>Date / heure (optionnel)
+          <input type="datetime-local" id="m-playedAt" />
+        </label>
+
+        <h3>Participants</h3>
+        <p class="muted">Place les joueurs dans l'ordre d'arrivée. Le score restant ne se renseigne que pour le dernier.</p>
+        <div id="m-participants"></div>
+        <button type="button" id="m-add">+ Ajouter un participant</button>
+
+        <div class="actions">
+          <button type="submit">Enregistrer le match</button>
+        </div>
+        <p id="m-status" class="status"></p>
+      </form>
+    </section>
+
+    <section id="tab-matches" class="tab">
+      <h2>Historique des matchs</h2>
+      <label>Saison
+        <select id="ml-season"><option value="">Toutes</option></select>
+      </label>
+      <button id="ml-refresh">Rafraîchir</button>
+      <div id="ml-list"></div>
+    </section>
+
+    <section id="tab-players" class="tab">
+      <h2>Joueurs</h2>
+      <form id="player-form">
+        <input type="text" id="p-name" placeholder="Nom du joueur" required maxlength="64" />
+        <button type="submit">Ajouter</button>
+        <span id="p-status" class="status"></span>
+      </form>
+      <ul id="p-list"></ul>
+    </section>
+
+    <section id="tab-seasons" class="tab">
+      <h2>Saisons</h2>
+      <form id="season-form">
+        <input type="text" id="s-name" placeholder="Nom de la saison" required maxlength="64" />
+        <button type="submit">Créer</button>
+        <span id="s-status" class="status"></span>
+      </form>
+      <ul id="s-list"></ul>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

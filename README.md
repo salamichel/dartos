@@ -17,7 +17,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-API on http://localhost:3000.
+API on http://localhost:3000. Web UI on the same URL (`/`).
 
 ## Data model
 
