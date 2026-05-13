@@ -54,9 +54,9 @@ async function refreshPlayers() {
   for (const p of players) {
     const li = document.createElement("li");
     li.innerHTML = `
-      <div>
+      <div class="player-info">
         <strong>${escapeHtml(p.name)}</strong>
-        <span class="muted">#${p.id}</span>
+        <span class="muted">${p.matchCount} matchs • ${p.totalXP} XP</span>
       </div>
       <button class="muted small edit-player" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Modifier</button>
     `;

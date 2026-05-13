@@ -122,3 +122,70 @@ button[type="submit"], #lb-refresh, #ml-refresh, #m-add { background: var(--acce
   .podium-spot { max-width: 120px; }
   .podium { height: 180px; gap: 1.5rem; }
 }
+
+/* --- Refined Tabs & Layouts --- */
+.tab h2 {
+  font-size: 1.8rem;
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* --- Player Card Rows in Match Entry --- */
+.participant-row {
+  grid-template-columns: 3rem 1fr auto;
+  grid-template-rows: auto auto;
+  grid-template-areas: 
+    "rank name remove"
+    "rank score score";
+  background: var(--panel-light);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  border-radius: 16px;
+  gap: 0.5rem;
+}
+
+.participant-row .rank { grid-area: rank; font-size: 1.5rem; text-align: center; display: flex; align-items: center; justify-content: center; }
+.participant-row .p-select { grid-area: name; background: transparent; border: none; font-weight: 700; font-size: 1.1rem; padding-left: 0; min-height: auto; }
+.participant-row .p-score, .participant-row .p-finish { grid-area: score; background: var(--bg); border: 1px solid var(--border); }
+.participant-row .remove { grid-area: remove; width: auto; min-height: auto; padding: 0.5rem; background: transparent; color: var(--muted); }
+
+/* --- Match History Improvements --- */
+.match-card ul { margin-top: 1rem; }
+.match-card ul li {
+  padding: 0.75rem;
+  background: rgba(255,255,255,0.02);
+  border-radius: 12px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-left: 4px solid transparent;
+}
+.match-card ul li strong { font-size: 1rem; }
+.match-card ul li:first-child { border-left-color: gold; background: rgba(255, 215, 0, 0.05); }
+
+/* --- Forms Grouping --- */
+form {
+  background: var(--panel);
+  padding: 1.5rem;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  margin-bottom: 2rem;
+}
+form h3 { margin-top: 0; color: var(--muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+.player-info strong { display: block; font-size: 1.1rem; }
+
+/* --- Desktop Tweaks --- */
+@media (min-width: 768px) {
+  .participant-row {
+    grid-template-areas: "rank name score remove";
+    grid-template-columns: 3rem 1fr 1fr 3rem;
+    grid-template-rows: auto;
+    align-items: center;
+  }
+}
+

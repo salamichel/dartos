@@ -22,8 +22,26 @@ playersRouter.post("/", async (req, res) => {
 });
 
 playersRouter.get("/", async (_req, res) => {
-  const players = await prisma.player.findMany({ orderBy: { createdAt: "asc" } });
-  res.json(players);
+  const players = await prisma.player.findMany({ 
+    include: {
+      participations: {
+        select: { xpEarned: true }
+      }
+    },
+    orderBy: { createdAt: "asc" } 
+  });
+  
+  const playersWithStats = players.map(p => {
+    const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
+    return {
+      id: p.id,
+      name: p.name,
+      matchCount: p.participations.length,
+      totalXP: Math.max(0, totalXP)
+    };
+  });
+
+  res.json(playersWithStats);
 });
 
 playersRouter.patch("/:id", async (req, res) => {
