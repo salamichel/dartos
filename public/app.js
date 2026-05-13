@@ -22,6 +22,14 @@ const api = {
 let players = [];
 let seasons = [];
 
+const LEVELS = [
+  { title: "Pousse-Caillou", minXP: 0 },
+  { title: "Lanceur du Dimanche", minXP: 500 },
+  { title: "Sniper de Comptoir", minXP: 2000 },
+  { title: "Maître du 301", minXP: 5000 },
+  { title: "Phil Taylor", minXP: 10000 },
+];
+
 // ----- Tabs -----
 document.querySelectorAll("nav button").forEach((b) => {
   b.addEventListener("click", () => {
@@ -409,26 +417,88 @@ document.getElementById("ml-refresh").addEventListener("click", refreshMatchesLi
 async function refreshLeaderboard() {
   const data = await api.leaderboard();
   const tbody = document.querySelector("#lb-table tbody");
-  tbody.innerHTML = "";
+  const podium = document.getElementById("lb-podium");
   const empty = document.getElementById("lb-empty");
+  
+  tbody.innerHTML = "";
+  podium.innerHTML = "";
+  
   if (!data || !data.length) {
     empty.classList.remove("hidden");
     return;
   }
   empty.classList.add("hidden");
+
+  // Render Podium for Top 3
+  const top3 = data.slice(0, 3);
+  const podiumOrder = [1, 0, 2]; // 2nd, 1st, 3rd for visual balance
+  
+  const podiumHtml = podiumOrder.map(idx => {
+    const p = top3[idx];
+    if (!p) return '<div class="podium-spot empty"></div>';
+    const rank = idx + 1;
+    const crown = rank === 1 ? "👑" : rank === 2 ? "🥈" : "🥉";
+    return `
+      <div class="podium-spot rank-${rank}">
+        <div class="podium-crown">${crown}</div>
+        <div class="podium-name">${escapeHtml(p.name)}</div>
+        <div class="podium-xp">${p.totalXP} XP</div>
+        <div class="podium-base"></div>
+      </div>
+    `;
+  }).join("");
+  podium.innerHTML = podiumHtml;
+
+  // Render Table
   data.forEach((r, i) => {
+    const nextLevelIdx = LEVELS.findIndex(l => l.minXP > r.totalXP);
+    const currentLevel = LEVELS[nextLevelIdx - 1] || LEVELS[LEVELS.length - 1];
+    const nextLevel = LEVELS[nextLevelIdx];
+    
+    let progressPercent = 100;
+    let xpRemaining = 0;
+    
+    if (nextLevel) {
+      const range = nextLevel.minXP - currentLevel.minXP;
+      const currentProgress = r.totalXP - currentLevel.minXP;
+      progressPercent = Math.min(100, Math.floor((currentProgress / range) * 100));
+      xpRemaining = nextLevel.minXP - r.totalXP;
+    }
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${i + 1}</td>
       <td><strong>${escapeHtml(r.name)}</strong></td>
       <td>${r.matchCount}</td>
-      <td>${r.totalXP}</td>
-      <td>${r.xpPerMatch}</td>
+      <td>${r.totalXP} XP</td>
+      <td>
+        <div class="xp-progress-bg" title="${nextLevel ? `Encore ${xpRemaining} XP avant le prochain niveau` : 'Niveau Max !'}">
+          <div class="xp-progress-bar" style="width: ${progressPercent}%"></div>
+          <span class="xp-progress-text">${progressPercent}%</span>
+        </div>
+      </td>
       <td><span class="level-badge">${r.level}</span></td>
     `;
     tbody.appendChild(tr);
   });
 }
+
+function renderLevelsLegend() {
+  const container = document.getElementById("levels-legend");
+  if (!container) return;
+  
+  container.innerHTML = LEVELS.map((l, i) => {
+    const next = LEVELS[i + 1];
+    const range = next ? `${l.minXP} - ${next.minXP - 1} XP` : `${l.minXP}+ XP`;
+    return `
+      <div class="level-card">
+        <span class="level-badge">${l.title}</span>
+        <span class="level-range">${range}</span>
+      </div>
+    `;
+  }).join("");
+}
+
 document.getElementById("lb-refresh").addEventListener("click", refreshLeaderboard);
 document.getElementById("lb-season").addEventListener("change", () => {
   refreshLeaderboard();
@@ -449,7 +519,10 @@ document.getElementById("lb-recalculate").addEventListener("click", async () => 
 
 // ----- Tab show hooks -----
 function onTabShow(tab) {
-  if (tab === "leaderboard") refreshLeaderboard();
+  if (tab === "leaderboard") {
+    refreshLeaderboard();
+    renderLevelsLegend();
+  }
   else if (tab === "matches") refreshMatchesList();
   else if (tab === "match" && participantsEl.children.length === 0) {
     addParticipantRow();
