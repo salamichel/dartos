@@ -119,11 +119,54 @@ button[type="submit"], #lb-refresh, #ml-refresh, #m-add { background: var(--acce
   #lb-table td:nth-child(2) { margin: 0; }
   #lb-table td:nth-child(3) { margin: 0; color: var(--text); font-size: 1rem; }
   #lb-table td:nth-child(4) { display: table-cell; }
-  .podium-spot { max-width: 120px; }
   .podium { height: 180px; gap: 1.5rem; }
 }
 
+/* --- Enhanced Classement Mobile --- */
+.lb-stats { display: flex; flex-direction: column; gap: 2px; }
+.lb-xp-total { color: var(--accent); font-weight: 800; font-size: 0.85rem; }
+
+/* --- Level Badge Colors --- */
+.level-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  display: inline-block;
+}
+
+/* Accents are handled by lowercasing and replacing spaces with hyphens in JS */
+[class*="level-pousse-caillou"] { background: #4a5568 !important; color: #edf2f7 !important; }
+[class*="level-lanceur-du-dimanche"] { background: #2f855a !important; color: #f0fff4 !important; }
+[class*="level-sniper-de-comptoir"] { background: #2b6cb0 !important; color: #ebf8ff !important; }
+[class*="level-maître-du-301"] { background: #805ad5 !important; color: #faf5ff !important; }
+[class*="level-phil-taylor"] { background: linear-gradient(45deg, #d69e2e, #ecc94b) !important; color: #000 !important; border-color: gold !important; }
+
+/* --- XP Colors --- */
+.xp-gain.plus { color: #3ecf8e !important; text-shadow: 0 0 10px rgba(62, 207, 142, 0.3); }
+
+/* --- Season Form Layout --- */
+.rules-config {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.rules-config label {
+  background: rgba(255,255,255,0.02);
+  padding: 0.6rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+}
+.rules-config input { margin-top: 5px; height: 38px; }
+
 /* --- Refined Tabs & Layouts --- */
+
 .tab h2 {
   font-size: 1.8rem;
   margin-top: 1rem;

@@ -361,7 +361,7 @@ async function refreshMatchesList() {
     const lis = sorted
       .map((p) => {
         const detail = p.rank === 1 ? ` (Finition ${p.finishType})` : ` (Reste ${p.scoreLeft})`;
-        const xp = `<span class="xp-gain ${p.xpEarned >= 0 ? "plus" : "minus"}">${p.xpEarned >= 0 ? "+" : ""}${p.xpEarned} XP</span>`;
+        const xp = `<span class="xp-gain plus">${p.xpEarned >= 0 ? "+" : ""}${p.xpEarned} XP</span>`;
         
         const medalsMap = {
           "POULIDOR": "🥈",
@@ -466,10 +466,16 @@ async function refreshLeaderboard() {
     }
 
     const tr = document.createElement("tr");
+    const levelSlug = r.level.toLowerCase().replace(/\s+/g, '-');
     tr.innerHTML = `
       <td>${i + 1}</td>
       <td><strong>${escapeHtml(r.name)}</strong></td>
-      <td>${r.matchCount}</td>
+      <td>
+        <div class="lb-stats">
+          <span>${r.matchCount} matchs</span>
+          <span class="lb-xp-total">${r.totalXP} XP</span>
+        </div>
+      </td>
       <td>${r.totalXP} XP</td>
       <td>
         <div class="xp-progress-bg" title="${nextLevel ? `Encore ${xpRemaining} XP avant le prochain niveau` : 'Niveau Max !'}">
@@ -477,7 +483,7 @@ async function refreshLeaderboard() {
           <span class="xp-progress-text">${progressPercent}%</span>
         </div>
       </td>
-      <td><span class="level-badge">${r.level}</span></td>
+      <td><span class="level-badge level-${levelSlug}">${r.level}</span></td>
     `;
     tbody.appendChild(tr);
   });

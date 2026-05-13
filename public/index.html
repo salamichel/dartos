@@ -135,18 +135,40 @@
       <form id="season-form">
         <input type="text" id="s-name" placeholder="Nom de la saison" required maxlength="64" />
         <div class="rules-config">
-          <label title="XP par adversaire battu">⚔️ <input type="number" id="s-xpOpponent" placeholder="50" /></label>
-          <label title="Bonus Finition Simple">🎯 <input type="number" id="s-xpSimple" placeholder="0" /></label>
-          <label title="Bonus Finition Double">🎯🎯 <input type="number" id="s-xpDouble" placeholder="50" /></label>
-          <label title="Bonus Finition Triple">🎯🎯🎯 <input type="number" id="s-xpTriple" placeholder="100" /></label>
-          <label title="Multiplicateur Vampire (points restants)">🧛 <input type="number" id="s-xpVampire" placeholder="1" /></label>
-          <label title="Base survivants">🛡️ <input type="number" id="s-xpSurvivor" placeholder="20" /></label>
+          <label>⚔️ XP par adversaire
+            <input type="number" id="s-xpOpponent" value="50" />
+          </label>
+          <label>🎯 Bonus Simple
+            <input type="number" id="s-xpSimple" value="0" />
+          </label>
+          <label>✖️2 Bonus Double
+            <input type="number" id="s-xpDouble" value="50" />
+          </label>
+          <label>✖️3 Bonus Triple
+            <input type="number" id="s-xpTriple" value="100" />
+          </label>
+          <label>🧛 Multiplicateur Vampire
+            <input type="number" id="s-xpVampire" value="1" step="0.1" />
+          </label>
+          <label>🛡️ Base Survivant
+            <input type="number" id="s-xpSurvivor" value="20" />
+          </label>
         </div>
+
+        <h3>🏅 Bonus des Badges</h3>
         <div class="rules-config medals">
-          <label title="Bonus Poulidor (< 10 pts)">🥈 <input type="number" id="s-xpPoulidor" placeholder="15" /></label>
-          <label title="Bonus Jackpot (Palindrome)">🎰 <input type="number" id="s-xpJackpot" placeholder="20" /></label>
-          <label title="Bonus Égalité Fraternelle">🤝 <input type="number" id="s-xpEgalite" placeholder="10" /></label>
-          <label title="Bonus Tueur de Géants">⚔️🏆 <input type="number" id="s-xpTueur" placeholder="50" /></label>
+          <label>🥈 Poulidor
+            <input type="number" id="s-xpPoulidor" value="100" />
+          </label>
+          <label>🎰 Jackpot
+            <input type="number" id="s-xpJackpot" value="300" />
+          </label>
+          <label>🤝 Égalité
+            <input type="number" id="s-xpEgalite" value="50" />
+          </label>
+          <label>⚔️🏆 Tueur de Géants
+            <input type="number" id="s-xpTueur" value="200" />
+          </label>
         </div>
         <button type="submit">Créer</button>
         <span id="s-status" class="status"></span>
