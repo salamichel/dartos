@@ -306,11 +306,15 @@ button.muted:hover {
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(8px);
-  display: flex;
+  display: none; /* Hidden by default */
   align-items: center;
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.3s ease;
+}
+
+#modal-overlay:not(.hidden) {
+  display: flex;
 }
 
 #match-modal {
@@ -331,7 +335,12 @@ button.muted:hover {
 .epic-header h2 { margin: 0.5rem 0; font-size: 2.5rem; color: #fff; text-transform: uppercase; letter-spacing: 0.1em; text-shadow: 0 0 20px var(--accent); }
 .epic-subtitle { color: var(--muted); font-weight: 600; letter-spacing: 0.2em; font-size: 0.8rem; text-transform: uppercase; }
 
-#modal-results-list { margin: 1.5rem 0; }
+#modal-results-list { 
+  margin: 1.5rem 0; 
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 5px;
+}
 .modal-row {
   display: flex;
   justify-content: space-between;
