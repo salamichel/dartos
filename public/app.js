@@ -325,7 +325,14 @@ function showMatchSummary(match) {
 }
 
 document.getElementById("modal-close").addEventListener("click", () => {
+  console.log("Closing modal...");
   document.getElementById("modal-overlay").classList.add("hidden");
+});
+
+document.getElementById("modal-overlay").addEventListener("click", (e) => {
+  if (e.target.id === "modal-overlay") {
+    document.getElementById("modal-overlay").classList.add("hidden");
+  }
 });
 
 // ----- Matches list -----
@@ -404,7 +411,7 @@ async function refreshLeaderboard() {
   const tbody = document.querySelector("#lb-table tbody");
   tbody.innerHTML = "";
   const empty = document.getElementById("lb-empty");
-  if (!data.length) {
+  if (!data || !data.length) {
     empty.classList.remove("hidden");
     return;
   }
