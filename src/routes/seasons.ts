@@ -101,19 +101,19 @@ seasonsRouter.post("/:id/recalculate", async (req, res) => {
 
   const { calculateMatchResults } = await import("../scoring");
 
-  const results = await prisma.$transaction(
-    season.matches.map((match) => {
+  await prisma.$transaction(async (tx) => {
+    for (const match of season.matches) {
       const winnerPart = match.participants.find((p) => p.rank === 1);
       const losers = match.participants
         .filter((p) => p.rank > 1)
         .map((p) => ({ playerId: p.playerId, scoreLeft: p.scoreLeft ?? 0 }));
 
-      if (!winnerPart) return Promise.resolve();
+      if (!winnerPart) continue;
 
       const newScores = calculateMatchResults(
         winnerPart.playerId,
         winnerPart.finishType as any,
-        losers.map((l) => ({ ...l, level: 0 })), // Simplification: we don't recalculate historical levels here for performance
+        losers.map((l) => ({ ...l, level: 0 })),
         0,
         {
           xpPerDefeatedOpponent: season.xpPerDefeatedOpponent,
@@ -129,19 +129,17 @@ seasonsRouter.post("/:id/recalculate", async (req, res) => {
         }
       );
 
-      return Promise.all(
-        newScores.map((ns) =>
-          prisma.matchParticipant.update({
-            where: { matchId_playerId: { matchId: match.id, playerId: ns.playerId } },
-            data: { 
-              xpEarned: ns.xpEarned,
-              medals: ns.medals,
-            },
-          })
-        )
-      );
-    })
-  );
+      for (const ns of newScores) {
+        await tx.matchParticipant.update({
+          where: { matchId_playerId: { matchId: match.id, playerId: ns.playerId } },
+          data: { 
+            xpEarned: ns.xpEarned,
+            medals: ns.medals,
+          },
+        });
+      }
+    }
+  });
 
   res.json({ success: true, matchesProcessed: season.matches.length });
 });
