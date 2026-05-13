@@ -183,8 +183,31 @@ ul li {
   padding: 0.8rem 1rem;
   margin-bottom: 0.6rem;
 }
-.match-card header { background: transparent; padding: 0; border: none; margin-bottom: 0.4rem; }
+.match-card header {
+  background: transparent;
+  padding: 0;
+  border: none;
+  margin-bottom: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
 .match-card .when { color: var(--muted); font-size: 0.8rem; }
+
+button.small {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+}
+button.muted {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--muted);
+}
+button.muted:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
 .match-card ol { margin: 0.3rem 0 0 1.2rem; padding: 0; }
 
 .scoring-help {
@@ -228,3 +251,128 @@ ul li {
   font-weight: 700;
   font-size: 0.8rem;
 }
+
+.rules-config {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 10px 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+.rules-config label {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8em;
+  margin: 0;
+}
+.rules-config input {
+  width: 60px;
+  padding: 3px 5px;
+  font-size: 0.85rem;
+}
+
+.rules-config.medals {
+  margin-top: 5px;
+  background: rgba(255, 215, 0, 0.05);
+}
+
+.medals-help {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+.medals-help h4 { margin: 0 0 0.5rem 0; font-size: 0.9rem; color: var(--muted); }
+
+.medal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 50%;
+  font-size: 0.8rem;
+  vertical-align: middle;
+  cursor: help;
+}
+
+/* --- Epic Modal --- */
+#modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+#match-modal {
+  width: 95%;
+  max-width: 500px;
+  background: linear-gradient(135deg, #1a1d24 0%, #0f1115 100%);
+  border: 2px solid var(--accent);
+  border-radius: 24px;
+  box-shadow: 0 0 50px rgba(226, 59, 59, 0.3), inset 0 0 20px rgba(226, 59, 59, 0.1);
+  overflow: hidden;
+  animation: slideUp 0.4s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+}
+
+.modal-content { padding: 2rem; text-align: center; }
+
+.epic-header { margin-bottom: 2rem; }
+.epic-header .crown { font-size: 4rem; filter: drop-shadow(0 0 10px gold); animation: bounce 2s infinite; }
+.epic-header h2 { margin: 0.5rem 0; font-size: 2.5rem; color: #fff; text-transform: uppercase; letter-spacing: 0.1em; text-shadow: 0 0 20px var(--accent); }
+.epic-subtitle { color: var(--muted); font-weight: 600; letter-spacing: 0.2em; font-size: 0.8rem; text-transform: uppercase; }
+
+#modal-results-list { margin: 1.5rem 0; }
+.modal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem;
+  background: rgba(255,255,255,0.03);
+  border-radius: 16px;
+  margin-bottom: 0.75rem;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.modal-row.winner {
+  background: rgba(226, 59, 59, 0.15);
+  border-color: rgba(226, 59, 59, 0.4);
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+.modal-player { text-align: left; }
+.modal-player .name { font-weight: 800; font-size: 1.2rem; display: block; color: #fff; }
+.modal-player .xp { font-family: 'Courier New', Courier, monospace; color: var(--ok); font-weight: 900; font-size: 1.1rem; }
+.modal-player .medals { margin-top: 0.4rem; font-size: 1.2rem; }
+
+.modal-actions button {
+  width: 100%;
+  padding: 1.2rem;
+  font-weight: 900;
+  font-size: 1.2rem;
+  background: var(--accent);
+  border: none;
+  color: white;
+  border-radius: 16px;
+  margin-top: 1rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 15px rgba(226, 59, 59, 0.4);
+}
+.modal-actions button:hover {
+  transform: scale(1.02) translateY(-2px);
+  background: var(--accent-hover);
+  box-shadow: 0 10px 25px rgba(226, 59, 59, 0.6);
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(100px) scale(0.9); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }

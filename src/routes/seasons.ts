@@ -86,3 +86,62 @@ seasonsRouter.get("/:id/leaderboard", async (req, res) => {
 
   res.json({ seasonId, seasonName: season.name, leaderboard });
 });
+
+seasonsRouter.post("/:id/recalculate", async (req, res) => {
+  const id = Number(req.params.id);
+  const season = await prisma.season.findUnique({
+    where: { id },
+    include: {
+      matches: {
+        include: { participants: true },
+      },
+    },
+  });
+  if (!season) return res.status(404).json({ error: "Season not found" });
+
+  const { calculateMatchResults } = await import("../scoring");
+
+  const results = await prisma.$transaction(
+    season.matches.map((match) => {
+      const winnerPart = match.participants.find((p) => p.rank === 1);
+      const losers = match.participants
+        .filter((p) => p.rank > 1)
+        .map((p) => ({ playerId: p.playerId, scoreLeft: p.scoreLeft ?? 0 }));
+
+      if (!winnerPart) return Promise.resolve();
+
+      const newScores = calculateMatchResults(
+        winnerPart.playerId,
+        winnerPart.finishType as any,
+        losers.map((l) => ({ ...l, level: 0 })), // Simplification: we don't recalculate historical levels here for performance
+        0,
+        {
+          xpPerDefeatedOpponent: season.xpPerDefeatedOpponent,
+          xpBonusSimple: season.xpBonusSimple,
+          xpBonusDouble: season.xpBonusDouble,
+          xpBonusTriple: season.xpBonusTriple,
+          xpVampireMultiplier: season.xpVampireMultiplier,
+          xpSurvivorBase: season.xpSurvivorBase,
+          xpBonusPoulidor: season.xpBonusPoulidor,
+          xpBonusJackpot: season.xpBonusJackpot,
+          xpBonusEgalite: season.xpBonusEgalite,
+          xpBonusTueurDeGeants: season.xpBonusTueurDeGeants,
+        }
+      );
+
+      return Promise.all(
+        newScores.map((ns) =>
+          prisma.matchParticipant.update({
+            where: { matchId_playerId: { matchId: match.id, playerId: ns.playerId } },
+            data: { 
+              xpEarned: ns.xpEarned,
+              medals: ns.medals,
+            },
+          })
+        )
+      );
+    })
+  );
+
+  res.json({ success: true, matchesProcessed: season.matches.length });
+});

@@ -25,3 +25,23 @@ playersRouter.get("/", async (_req, res) => {
   const players = await prisma.player.findMany({ orderBy: { createdAt: "asc" } });
   res.json(players);
 });
+
+playersRouter.patch("/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const parsed = createPlayerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+  try {
+    const player = await prisma.player.update({
+      where: { id },
+      data: parsed.data,
+    });
+    return res.json(player);
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return res.status(409).json({ error: "A player with this name already exists" });
+    }
+    return res.status(404).json({ error: "Player not found" });
+  }
+});

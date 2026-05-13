@@ -41,4 +41,10 @@ export const createPlayerSchema = z.object({
 
 export const createSeasonSchema = z.object({
   name: z.string().trim().min(1).max(64),
+  xpPerDefeatedOpponent: z.number().int().min(0).optional(),
+  xpBonusSimple: z.number().int().min(0).optional(),
+  xpBonusDouble: z.number().int().min(0).optional(),
+  xpBonusTriple: z.number().int().min(0).optional(),
+  xpVampireMultiplier: z.number().int().min(0).optional(),
+  xpSurvivorBase: z.number().int().min(0).optional(),
 });

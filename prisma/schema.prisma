@@ -28,6 +28,19 @@ model Season {
   name      String    @unique
   startedAt DateTime  @default(now()) @map("started_at")
   endedAt   DateTime? @map("ended_at")
+
+  xpPerDefeatedOpponent Int @default(50) @map("xp_per_defeated_opponent")
+  xpBonusSimple          Int @default(0)  @map("xp_bonus_simple")
+  xpBonusDouble          Int @default(50) @map("xp_bonus_double")
+  xpBonusTriple          Int @default(100) @map("xp_bonus_triple")
+  xpVampireMultiplier    Int @default(1)  @map("xp_vampire_multiplier")
+  xpSurvivorBase         Int @default(20) @map("xp_survivor_base")
+  
+  xpBonusPoulidor        Int @default(15) @map("xp_bonus_poulidor")
+  xpBonusJackpot         Int @default(20) @map("xp_bonus_jackpot")
+  xpBonusEgalite         Int @default(10) @map("xp_bonus_egalite")
+  xpBonusTueurDeGeants   Int @default(50) @map("xp_bonus_tueur_de_geants")
+
   matches   Match[]
 
   @@map("seasons")
@@ -52,6 +65,7 @@ model MatchParticipant {
   scoreLeft  Int?    @map("score_left") // set for all losers
   xpEarned   Int     @default(0) @map("xp_earned")
   finishType String? @map("finish_type") // set for the winner ('SIMPLE', 'DOUBLE', 'TRIPLE')
+  medals     String[] @default([]) // names of earned badges (POULIDOR, JACKPOT, etc.)
 
   match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
   player Player @relation(fields: [playerId], references: [id], onDelete: Restrict)

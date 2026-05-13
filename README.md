@@ -65,13 +65,14 @@ Validation enforced server-side:
 ### `GET /leaderboard`
 Returns the global leaderboard with RPG-style progression.
 
-**XP Rules:**
+**XP Rules (Default):**
 1. **Winner**:
    - +50 XP per defeated opponent.
    - Bonus Finition: Simple (+0), Double (+50), Triple/Bulle (+100).
    - Zone Vampire: +1 XP per remaining point on the board (sum of losers' `scoreLeft`).
-2. **Survivors** (intermediate losers): +20 XP.
-3. **Cul Rouge** (highest score remaining): +20 XP - (scoreLeft / 2).
+2. **Survivors** (all losers): +20 XP.
+
+*Note: The "Cul Rouge" tax has been removed. Rules are now configurable per season.*
 
 **Levels:**
 - Lvl 1: Pousse-Caillou (0 - 499 XP)

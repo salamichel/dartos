@@ -6,6 +6,20 @@ export interface MatchParticipantResult {
   scoreLeft: number | null;
   xpEarned: number;
   finishType?: FinishType;
+  medals: string[];
+}
+
+export interface XPConfig {
+  xpPerDefeatedOpponent: number;
+  xpBonusSimple: number;
+  xpBonusDouble: number;
+  xpBonusTriple: number;
+  xpVampireMultiplier: number;
+  xpSurvivorBase: number;
+  xpBonusPoulidor: number;
+  xpBonusJackpot: number;
+  xpBonusEgalite: number;
+  xpBonusTueurDeGeants: number;
 }
 
 /**
@@ -14,19 +28,27 @@ export interface MatchParticipantResult {
 export function calculateMatchResults(
   winnerId: number,
   finishType: FinishType,
-  losers: { playerId: number; scoreLeft: number }[]
+  losers: { playerId: number; scoreLeft: number; level: number }[],
+  winnerLevel: number,
+  config: XPConfig
 ): MatchParticipantResult[] {
-  // Sort losers by scoreLeft ascending to determine rank (2nd, 3rd, ...)
   const sortedLosers = [...losers].sort((a, b) => a.scoreLeft - b.scoreLeft);
   const nAdversaries = losers.length;
   const totalScoreLeft = losers.reduce((sum, l) => sum + l.scoreLeft, 0);
 
-  // Winner XP:
-  // 1. Bataille Royale: +50 XP per defeated opponent
-  // 2. Panache: Simple = 0 | Double = +50 | Triple/Bulle = +100
-  // 3. Vampire de Zone: +1 XP per remaining point on board
-  const finishBonus = finishType === "TRIPLE" ? 100 : finishType === "DOUBLE" ? 50 : 0;
-  const winnerXP = (nAdversaries * 50) + finishBonus + totalScoreLeft;
+  // Winner XP
+  let finishBonus = config.xpBonusSimple;
+  if (finishType === "TRIPLE") finishBonus = config.xpBonusTriple;
+  else if (finishType === "DOUBLE") finishBonus = config.xpBonusDouble;
+
+  let winnerXP = (nAdversaries * config.xpPerDefeatedOpponent) + finishBonus + (totalScoreLeft * config.xpVampireMultiplier);
+  const winnerMedals: string[] = [];
+
+  // Tueur de Géants: Winner level < any loser level
+  if (losers.some(l => l.level > winnerLevel)) {
+    winnerXP += config.xpBonusTueurDeGeants;
+    winnerMedals.push("TUEUR_DE_GEANTS");
+  }
 
   const results: MatchParticipantResult[] = [];
   results.push({
@@ -35,27 +57,52 @@ export function calculateMatchResults(
     scoreLeft: null,
     xpEarned: winnerXP,
     finishType,
+    medals: winnerMedals,
   });
 
-  // Losers XP:
-  // 1. Consolation: +20 XP base
-  // 2. Cul Rouge (last): +20 XP - (scoreLeft / 2)
+  // Losers XP
+  const scoreCounts = new Map<number, number>();
+  losers.forEach(l => scoreCounts.set(l.scoreLeft, (scoreCounts.get(l.scoreLeft) || 0) + 1));
+
   sortedLosers.forEach((loser, index) => {
     const rank = index + 2;
-    const isCulRouge = index === sortedLosers.length - 1;
-    let xp = 20;
-    if (isCulRouge) {
-      xp -= Math.round(loser.scoreLeft / 2);
+    let xp = config.xpSurvivorBase;
+    const medals: string[] = [];
+
+    // Poulidor: rank 2 and score < 10
+    if (rank === 2 && loser.scoreLeft < 10) {
+      xp += config.xpBonusPoulidor;
+      medals.push("POULIDOR");
     }
+
+    // Jackpot: Palindrome
+    if (isPalindrome(loser.scoreLeft)) {
+      xp += config.xpBonusJackpot;
+      medals.push("JACKPOT");
+    }
+
+    // Égalité Fraternelle
+    if (scoreCounts.get(loser.scoreLeft)! > 1) {
+      xp += config.xpBonusEgalite;
+      medals.push("EGALITE");
+    }
+
     results.push({
       playerId: loser.playerId,
       rank,
       scoreLeft: loser.scoreLeft,
       xpEarned: xp,
+      medals,
     });
   });
 
   return results;
+}
+
+function isPalindrome(n: number): boolean {
+  if (n < 10) return false;
+  const s = String(n);
+  return s === s.split("").reverse().join("");
 }
 
 export const LEVELS = [

@@ -25,6 +25,7 @@
         <select id="lb-season"></select>
       </label>
       <button id="lb-refresh">Rafraîchir</button>
+      <button id="lb-recalculate" class="muted">Recalculer l'XP de la saison</button>
       <table id="lb-table">
         <thead>
           <tr><th>#</th><th>Joueur</th><th>Matchs</th><th>XP Total</th><th>Moy. XP</th><th>Niveau</th></tr>
@@ -41,18 +42,27 @@
           <div>
             <h4>🏆 Le Vainqueur</h4>
             <ul>
-              <li><strong>Bataille Royale</strong> : +50 XP par adversaire.</li>
-              <li><strong>Panache</strong> : Double (+50 XP), Triple (+100 XP).</li>
-              <li><strong>Vampire</strong> : +1 XP par point restant sur la cible.</li>
+              <li><strong>Bataille Royale</strong> : +<span id="rule-xpOpponent">50</span> XP par adversaire.</li>
+              <li><strong>Panache</strong> : Double (+<span id="rule-xpDouble">50</span> XP), Triple (+<span id="rule-xpTriple">100</span> XP).</li>
+              <li><strong>Vampire</strong> : +<span id="rule-xpVampire">1</span> XP par point restant sur la cible.</li>
             </ul>
           </div>
           <div>
             <h4>💀 Les Perdants</h4>
             <ul>
-              <li><strong>Survivants</strong> : Forfait de +20 XP.</li>
-              <li><strong>Cul Rouge (Dernier)</strong> : +20 XP - (Score restant / 2).</li>
+              <li><strong>Survivants</strong> : Forfait de +<span id="rule-xpSurvivor">20</span> XP.</li>
             </ul>
           </div>
+        </div>
+        
+        <div class="medals-help">
+          <h4>🏅 Badges Spéciaux</h4>
+          <ul class="scoring-list">
+            <li>🥈 <strong>Poulidor</strong> : +<span id="rule-xpPoulidor">15</span> XP (Finit à < 10 pts)</li>
+            <li>🎰 <strong>Jackpot</strong> : +<span id="rule-xpJackpot">20</span> XP (Score miroir : 11, 22...)</li>
+            <li>🤝 <strong>Égalité</strong> : +<span id="rule-xpEgalite">10</span> XP (Même score qu'un autre)</li>
+            <li>⚔️🏆 <strong>Tueur de Géants</strong> : +<span id="rule-xpTueur">50</span> XP (Bat un plus haut niveau)</li>
+          </ul>
         </div>
         
         <p class="levels-info">Niveaux : Pousse-Caillou (0), Lanceur du Dimanche (500), Sniper de Comptoir (2000), Maître du 301 (5000), Phil Taylor (10000).</p>
@@ -60,8 +70,9 @@
     </section>
 
     <section id="tab-match" class="tab">
-      <h2>Enregistrer un match terminé</h2>
+      <h2 id="match-form-title">Enregistrer un match terminé</h2>
       <form id="match-form">
+        <input type="hidden" id="m-id" />
         <label>Saison
           <select id="m-season" required></select>
         </label>
@@ -104,12 +115,44 @@
       <h2>Saisons</h2>
       <form id="season-form">
         <input type="text" id="s-name" placeholder="Nom de la saison" required maxlength="64" />
+        <div class="rules-config">
+          <label title="XP par adversaire battu">⚔️ <input type="number" id="s-xpOpponent" placeholder="50" /></label>
+          <label title="Bonus Finition Simple">🎯 <input type="number" id="s-xpSimple" placeholder="0" /></label>
+          <label title="Bonus Finition Double">🎯🎯 <input type="number" id="s-xpDouble" placeholder="50" /></label>
+          <label title="Bonus Finition Triple">🎯🎯🎯 <input type="number" id="s-xpTriple" placeholder="100" /></label>
+          <label title="Multiplicateur Vampire (points restants)">🧛 <input type="number" id="s-xpVampire" placeholder="1" /></label>
+          <label title="Base survivants">🛡️ <input type="number" id="s-xpSurvivor" placeholder="20" /></label>
+        </div>
+        <div class="rules-config medals">
+          <label title="Bonus Poulidor (< 10 pts)">🥈 <input type="number" id="s-xpPoulidor" placeholder="15" /></label>
+          <label title="Bonus Jackpot (Palindrome)">🎰 <input type="number" id="s-xpJackpot" placeholder="20" /></label>
+          <label title="Bonus Égalité Fraternelle">🤝 <input type="number" id="s-xpEgalite" placeholder="10" /></label>
+          <label title="Bonus Tueur de Géants">⚔️🏆 <input type="number" id="s-xpTueur" placeholder="50" /></label>
+        </div>
         <button type="submit">Créer</button>
         <span id="s-status" class="status"></span>
       </form>
       <ul id="s-list"></ul>
     </section>
   </main>
+
+  <div id="modal-overlay" class="hidden">
+    <div id="match-modal">
+      <div class="modal-content">
+        <header class="epic-header">
+          <div class="crown">👑</div>
+          <h2 id="modal-winner-name">VAINQUEUR !</h2>
+          <div class="epic-subtitle">Match terminé</div>
+        </header>
+        
+        <div id="modal-results-list"></div>
+        
+        <div class="modal-actions">
+          <button id="modal-close">CÉLÉBRER & CONTINUER</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
 </body>

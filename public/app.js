@@ -45,9 +45,29 @@ async function refreshPlayers() {
   ul.innerHTML = "";
   for (const p of players) {
     const li = document.createElement("li");
-    li.innerHTML = `<span>${escapeHtml(p.name)}</span><span class="muted">#${p.id}</span>`;
+    li.innerHTML = `
+      <div>
+        <strong>${escapeHtml(p.name)}</strong>
+        <span class="muted">#${p.id}</span>
+      </div>
+      <button class="muted small edit-player" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Modifier</button>
+    `;
     ul.appendChild(li);
   }
+  
+  ul.querySelectorAll(".edit-player").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const newName = prompt("Nouveau pseudo pour " + btn.dataset.name, btn.dataset.name);
+      if (newName && newName !== btn.dataset.name) {
+        try {
+          await api.req("/players/" + btn.dataset.id, { method: "PATCH", body: JSON.stringify({ name: newName.trim() }) });
+          await refreshPlayers();
+        } catch (err) {
+          alert(err.message);
+        }
+      }
+    });
+  });
   refreshParticipantOptions();
 }
 
@@ -90,15 +110,58 @@ async function refreshSeasons() {
     }
     if (prev) sel.value = prev;
   }
+  
+  // Update rules for the currently selected season in leaderboard
+  updateRuleDisplay(document.getElementById("lb-season").value);
+}
+
+function updateRuleDisplay(seasonId) {
+  const season = seasons.find(s => s.id == seasonId) || seasons[0];
+  if (!season) return;
+  
+  document.getElementById("rule-xpOpponent").textContent = season.xpPerDefeatedOpponent;
+  document.getElementById("rule-xpDouble").textContent = season.xpBonusDouble;
+  document.getElementById("rule-xpTriple").textContent = season.xpBonusTriple;
+  document.getElementById("rule-xpVampire").textContent = season.xpVampireMultiplier;
+  document.getElementById("rule-xpSurvivor").textContent = season.xpSurvivorBase;
+
+  document.getElementById("rule-xpPoulidor").textContent = season.xpBonusPoulidor;
+  document.getElementById("rule-xpJackpot").textContent = season.xpBonusJackpot;
+  document.getElementById("rule-xpEgalite").textContent = season.xpBonusEgalite;
+  document.getElementById("rule-xpTueur").textContent = season.xpBonusTueurDeGeants;
 }
 
 document.getElementById("season-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const input = document.getElementById("s-name");
+  const name = document.getElementById("s-name").value.trim();
   const status = document.getElementById("s-status");
+  
+  const payload = { name };
+  const fields = {
+    xpPerDefeatedOpponent: "s-xpOpponent",
+    xpBonusSimple: "s-xpSimple",
+    xpBonusDouble: "s-xpDouble",
+    xpBonusTriple: "s-xpTriple",
+    xpVampireMultiplier: "s-xpVampire",
+    xpSurvivorBase: "s-xpSurvivor",
+    xpBonusPoulidor: "s-xpPoulidor",
+    xpBonusJackpot: "s-xpJackpot",
+    xpBonusEgalite: "s-xpEgalite",
+    xpBonusTueurDeGeants: "s-xpTueur"
+  };
+  
+  for (const [key, id] of Object.entries(fields)) {
+    const el = document.getElementById(id);
+    if (el && el.value !== "") payload[key] = Number(el.value);
+  }
+
   try {
-    await api.createSeason(input.value.trim());
-    input.value = "";
+    await api.req("/seasons", { method: "POST", body: JSON.stringify(payload) });
+    document.getElementById("s-name").value = "";
+    Object.values(fields).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    });
     setStatus(status, "Créée", true);
     await refreshSeasons();
   } catch (err) {
@@ -176,6 +239,7 @@ document.getElementById("m-add").addEventListener("click", addParticipantRow);
 document.getElementById("match-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const status = document.getElementById("m-status");
+  const matchId = document.getElementById("m-id").value;
   const seasonId = Number(document.getElementById("m-season").value);
   const playedAtRaw = document.getElementById("m-playedAt").value;
   const rows = [...participantsEl.querySelectorAll(".participant-row")];
@@ -206,14 +270,62 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
   if (playedAtRaw) payload.playedAt = new Date(playedAtRaw).toISOString();
 
   try {
-    await api.recordMatch(payload);
-    setStatus(status, "Match enregistré ✓", true);
+    let result;
+    if (matchId) {
+      result = await api.req("/matches/" + matchId, { method: "PUT", body: JSON.stringify(payload) });
+      // Reset form
+      document.getElementById("m-id").value = "";
+      document.getElementById("match-form-title").textContent = "Enregistrer un match terminé";
+    } else {
+      result = await api.recordMatch(payload);
+    }
+    showMatchSummary(result);
     participantsEl.innerHTML = "";
     addParticipantRow(); // winner
     addParticipantRow(); // one loser
   } catch (err) {
     setStatus(status, err.message, false);
   }
+});
+
+function showMatchSummary(match) {
+  const overlay = document.getElementById("modal-overlay");
+  const list = document.getElementById("modal-results-list");
+  list.innerHTML = "";
+  
+  const sorted = [...match.participants].sort((a, b) => a.rank - b.rank);
+  const winner = sorted[0];
+  
+  document.getElementById("modal-winner-name").textContent = winner.player.name;
+  
+  const medalsMap = {
+    "POULIDOR": "🥈",
+    "JACKPOT": "🎰",
+    "EGALITE": "🤝",
+    "TUEUR_DE_GEANTS": "⚔️🏆"
+  };
+
+  sorted.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "modal-row" + (p.rank === 1 ? " winner" : "");
+    
+    const medalsHtml = (p.medals || []).map(m => `<span>${medalsMap[m] || m}</span>`).join(" ");
+    
+    row.innerHTML = `
+      <div class="modal-player">
+        <span class="name">${p.player.name}</span>
+        <div class="medals">${medalsHtml}</div>
+      </div>
+      <div class="xp">+${p.xpEarned} XP</div>
+    `;
+    list.appendChild(row);
+  });
+  
+  overlay.classList.remove("hidden");
+}
+
+document.getElementById("modal-close").addEventListener("click", () => {
+  document.getElementById("modal-overlay").classList.add("hidden");
 });
 
 // ----- Matches list -----
@@ -235,12 +347,54 @@ async function refreshMatchesList() {
       .map((p) => {
         const detail = p.rank === 1 ? ` (Finition ${p.finishType})` : ` (Reste ${p.scoreLeft})`;
         const xp = `<span class="xp-gain ${p.xpEarned >= 0 ? "plus" : "minus"}">${p.xpEarned >= 0 ? "+" : ""}${p.xpEarned} XP</span>`;
-        return `<li><strong>${p.rank}.</strong> ${escapeHtml(p.player.name)}${detail} — ${xp}</li>`;
+        
+        const medalsMap = {
+          "POULIDOR": "🥈",
+          "JACKPOT": "🎰",
+          "EGALITE": "🤝",
+          "TUEUR_DE_GEANTS": "⚔️🏆"
+        };
+        const medalsHtml = (p.medals || []).map(m => `<span class="medal-icon" title="${m}">${medalsMap[m] || m}</span>`).join(" ");
+
+        return `<li><strong>${p.rank}.</strong> ${escapeHtml(p.player.name)}${detail} — ${xp} ${medalsHtml}</li>`;
       })
       .join("");
-    card.innerHTML = `<header><strong>Match #${m.id}</strong> <span class="when">${when}</span></header><ul>${lis}</ul>`;
+    card.innerHTML = `
+      <header>
+        <div><strong>Match #${m.id}</strong> <span class="muted">${when}</span></div>
+        <button class="muted small edit-match" data-id="${m.id}">Modifier</button>
+      </header>
+      <ul>${lis}</ul>
+    `;
+    card.querySelector(".edit-match").addEventListener("click", () => {
+      editMatch(m);
+    });
     container.appendChild(card);
   }
+}
+
+function editMatch(m) {
+  document.getElementById("m-id").value = m.id;
+  document.getElementById("m-season").value = m.seasonId;
+  document.getElementById("m-playedAt").value = new Date(m.playedAt).toISOString().slice(0, 16);
+  document.getElementById("match-form-title").textContent = "Modifier le match #" + m.id;
+  
+  participantsEl.innerHTML = "";
+  const sorted = [...m.participants].sort((a, b) => a.rank - b.rank);
+  
+  sorted.forEach((p, i) => {
+    addParticipantRow();
+    const row = participantsEl.children[i];
+    row.querySelector(".p-select").value = p.playerId;
+    if (p.rank === 1) {
+      row.querySelector(".p-finish").value = p.finishType;
+    } else {
+      row.querySelector(".p-score").value = p.scoreLeft;
+    }
+  });
+
+  // Switch tab
+  document.querySelector('button[data-tab="match"]').click();
 }
 document.getElementById("ml-refresh").addEventListener("click", refreshMatchesList);
 
@@ -269,7 +423,22 @@ async function refreshLeaderboard() {
   });
 }
 document.getElementById("lb-refresh").addEventListener("click", refreshLeaderboard);
-document.getElementById("lb-season").addEventListener("change", refreshLeaderboard);
+document.getElementById("lb-season").addEventListener("change", () => {
+  refreshLeaderboard();
+  updateRuleDisplay(document.getElementById("lb-season").value);
+});
+document.getElementById("lb-recalculate").addEventListener("click", async () => {
+  const seasonId = document.getElementById("lb-season").value;
+  if (!seasonId) return alert("Choisissez une saison");
+  if (!confirm("Voulez-vous recalculer tous les scores d'XP de cette saison avec les règles actuelles ?")) return;
+  try {
+    const res = await api.req(`/seasons/${seasonId}/recalculate`, { method: "POST" });
+    alert(`Terminé ! ${res.matchesProcessed} matchs recalculés.`);
+    await refreshLeaderboard();
+  } catch (err) {
+    alert(err.message);
+  }
+});
 
 // ----- Tab show hooks -----
 function onTabShow(tab) {
