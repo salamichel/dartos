@@ -241,7 +241,7 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
 .participant-row.winner-row { border-color: rgba(255, 215, 0, 0.3); background: rgba(255, 215, 0, 0.03); }
 
 .participant-row .rank { grid-area: rank; font-size: 1.4rem; text-align: center; display: flex; align-items: center; justify-content: center; }
-.participant-row .p-select { grid-area: name; background: transparent; border: 1px solid var(--border); border-radius: 8px; font-weight: 700; font-size: 1rem; }
+.participant-row .p-select { grid-area: name; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-weight: 700; font-size: 1rem; }
 .participant-row .p-score, .participant-row .p-finish { grid-area: score; background: var(--bg); border: 1px solid var(--border); }
 .participant-row .remove { grid-area: remove; width: auto; min-height: auto; padding: 0.4rem 0.6rem; background: transparent; color: var(--muted); font-size: 1.2rem; border-radius: 8px; }
 .participant-row .remove:hover { color: var(--err); background: rgba(255,107,107,0.1); }
