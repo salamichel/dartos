@@ -2,6 +2,7 @@
 
 // ----- Admin password -----
 let adminPassword = localStorage.getItem("adminPassword") || "";
+const SPLASH_KEY = "splashSeen";
 
 function updateLockBtn() {
   const btn = document.getElementById("lock-btn");
@@ -825,6 +826,48 @@ function onTabShow(tab) {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
+
+// ----- Splash screen -----
+(function initSplash() {
+  const overlay   = document.getElementById("splash-overlay");
+  const track     = document.getElementById("splash-track");
+  const dots      = document.querySelectorAll(".splash-dot");
+  const prevBtn   = document.getElementById("splash-prev");
+  const nextBtn   = document.getElementById("splash-next");
+  const skipBtn   = document.getElementById("splash-skip");
+  const ctaBtn    = document.getElementById("splash-cta");
+  const recallBtn = document.getElementById("splash-btn");
+  const TOTAL = 3;
+  let current = 0;
+
+  function goTo(n) {
+    current = Math.max(0, Math.min(TOTAL - 1, n));
+    track.style.transform = `translateX(-${current * 100}%)`;
+    dots.forEach((d, i) => d.classList.toggle("active", i === current));
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === TOTAL - 1;
+    ctaBtn.style.display = current === TOTAL - 1 ? "block" : "none";
+    nextBtn.style.visibility = current === TOTAL - 1 ? "hidden" : "visible";
+  }
+
+  function openSplash() { overlay.classList.remove("hidden"); goTo(0); }
+  function closeSplash() { overlay.classList.add("hidden"); localStorage.setItem(SPLASH_KEY, "1"); }
+
+  prevBtn.addEventListener("click", () => goTo(current - 1));
+  nextBtn.addEventListener("click", () => goTo(current + 1));
+  skipBtn.addEventListener("click", closeSplash);
+  ctaBtn.addEventListener("click",  closeSplash);
+  recallBtn.addEventListener("click", openSplash);
+  dots.forEach((d) => d.addEventListener("click", () => goTo(Number(d.dataset.dot))));
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) closeSplash(); });
+  overlay.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight") goTo(current + 1);
+    if (e.key === "ArrowLeft")  goTo(current - 1);
+    if (e.key === "Escape")     closeSplash();
+  });
+
+  if (!localStorage.getItem(SPLASH_KEY)) openSplash();
+})();
 
 // ----- Boot -----
 (async function init() {
