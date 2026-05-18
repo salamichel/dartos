@@ -8,13 +8,16 @@
 </head>
 <body>
   <header>
-    <h1>dartos</h1>
+    <div class="header-top">
+      <h1>dartos</h1>
+      <button id="lock-btn" class="lock-btn" title="Mot de passe admin">🔒</button>
+    </div>
     <nav>
-      <button data-tab="leaderboard" class="active">Classement</button>
-      <button data-tab="match">Saisir</button>
-      <button data-tab="matches">Matchs</button>
-      <button data-tab="players">Joueurs</button>
-      <button data-tab="seasons">Saisons</button>
+      <button data-tab="leaderboard" class="active">🏆 Classement</button>
+      <button data-tab="match">⚔️ Saisir</button>
+      <button data-tab="matches">📜 Matchs</button>
+      <button data-tab="players">👤 Joueurs</button>
+      <button data-tab="seasons">🏟️ Saisons</button>
     </nav>
   </header>
 
@@ -133,6 +136,7 @@
     <section id="tab-seasons" class="tab">
       <h2>Saisons</h2>
       <form id="season-form">
+        <input type="hidden" id="s-editing-id" />
         <input type="text" id="s-name" placeholder="Nom de la saison" required maxlength="64" />
         <div class="rules-config">
           <label>⚔️ XP par adversaire
@@ -158,19 +162,22 @@
         <h3>🏅 Bonus des Badges</h3>
         <div class="rules-config medals">
           <label>🥈 Poulidor
-            <input type="number" id="s-xpPoulidor" value="100" />
+            <input type="number" id="s-xpPoulidor" value="15" />
           </label>
           <label>🎰 Jackpot
-            <input type="number" id="s-xpJackpot" value="300" />
+            <input type="number" id="s-xpJackpot" value="20" />
           </label>
           <label>🤝 Égalité
-            <input type="number" id="s-xpEgalite" value="50" />
+            <input type="number" id="s-xpEgalite" value="10" />
           </label>
           <label>⚔️🏆 Tueur de Géants
-            <input type="number" id="s-xpTueur" value="200" />
+            <input type="number" id="s-xpTueur" value="50" />
           </label>
         </div>
-        <button type="submit">Créer</button>
+        <div class="actions" style="display:flex;gap:0.5rem">
+          <button type="submit" id="s-submit">Créer</button>
+          <button type="button" id="s-cancel" class="muted hidden">Annuler</button>
+        </div>
         <span id="s-status" class="status"></span>
       </form>
       <ul id="s-list"></ul>
@@ -195,6 +202,16 @@
     </div>
   </div>
 
+  <div id="toast-container"></div>
+  <div id="confirm-overlay" class="hidden">
+    <div id="confirm-box">
+      <p id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button id="confirm-cancel" class="muted">Annuler</button>
+        <button id="confirm-ok">Confirmer</button>
+      </div>
+    </div>
+  </div>
   <script src="/app.js"></script>
 </body>
 </html>

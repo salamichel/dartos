@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
-import { createSeasonSchema } from "../schemas";
+import { createSeasonSchema, updateSeasonSchema } from "../schemas";
+import { calculateMatchResults } from "../scoring";
+import { requireAdminPassword } from "../middleware";
 
 export const seasonsRouter = Router();
 
@@ -87,7 +89,77 @@ seasonsRouter.get("/:id/leaderboard", async (req, res) => {
   res.json({ seasonId, seasonName: season.name, leaderboard });
 });
 
-seasonsRouter.post("/:id/recalculate", async (req, res) => {
+seasonsRouter.patch("/:id", requireAdminPassword, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid season id" });
+  }
+  const parsed = updateSeasonSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+
+  const season = await prisma.season.findUnique({
+    where: { id },
+    include: { matches: { include: { participants: true } } },
+  });
+  if (!season) return res.status(404).json({ error: "Season not found" });
+
+  const updated = await prisma.season.update({ where: { id }, data: parsed.data });
+
+  // Recalculate XP for all matches with the new rules
+  await prisma.$transaction(async (tx) => {
+    for (const match of season.matches) {
+      const winnerPart = match.participants.find((p) => p.rank === 1);
+      const losers = match.participants
+        .filter((p) => p.rank > 1)
+        .map((p) => ({ playerId: p.playerId, scoreLeft: p.scoreLeft ?? 0 }));
+      if (!winnerPart) continue;
+
+      const newScores = calculateMatchResults(
+        winnerPart.playerId,
+        winnerPart.finishType as any,
+        losers.map((l) => ({ ...l, level: 0 })),
+        0,
+        {
+          xpPerDefeatedOpponent: updated.xpPerDefeatedOpponent,
+          xpBonusSimple: updated.xpBonusSimple,
+          xpBonusDouble: updated.xpBonusDouble,
+          xpBonusTriple: updated.xpBonusTriple,
+          xpVampireMultiplier: updated.xpVampireMultiplier,
+          xpSurvivorBase: updated.xpSurvivorBase,
+          xpBonusPoulidor: updated.xpBonusPoulidor,
+          xpBonusJackpot: updated.xpBonusJackpot,
+          xpBonusEgalite: updated.xpBonusEgalite,
+          xpBonusTueurDeGeants: updated.xpBonusTueurDeGeants,
+        }
+      );
+
+      for (const ns of newScores) {
+        await tx.matchParticipant.update({
+          where: { matchId_playerId: { matchId: match.id, playerId: ns.playerId } },
+          data: { xpEarned: ns.xpEarned, medals: ns.medals },
+        });
+      }
+    }
+  });
+
+  return res.json({ ...updated, matchesRecalculated: season.matches.length });
+});
+
+seasonsRouter.delete("/:id", requireAdminPassword, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid season id" });
+  }
+  const season = await prisma.season.findUnique({ where: { id } });
+  if (!season) return res.status(404).json({ error: "Season not found" });
+
+  await prisma.season.delete({ where: { id } });
+  return res.status(204).send();
+});
+
+seasonsRouter.post("/:id/recalculate", requireAdminPassword, async (req, res) => {
   const id = Number(req.params.id);
   const season = await prisma.season.findUnique({
     where: { id },
@@ -98,8 +170,6 @@ seasonsRouter.post("/:id/recalculate", async (req, res) => {
     },
   });
   if (!season) return res.status(404).json({ error: "Season not found" });
-
-  const { calculateMatchResults } = await import("../scoring");
 
   await prisma.$transaction(async (tx) => {
     for (const match of season.matches) {

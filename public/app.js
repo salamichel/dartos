@@ -1,11 +1,29 @@
 // Vanilla JS frontend for the dartos API.
 
+// ----- Admin password -----
+let adminPassword = localStorage.getItem("adminPassword") || "";
+
+function updateLockBtn() {
+  const btn = document.getElementById("lock-btn");
+  btn.textContent = adminPassword ? "🔓" : "🔒";
+  btn.classList.toggle("unlocked", !!adminPassword);
+  btn.title = adminPassword ? "Mot de passe admin configuré (cliquer pour changer)" : "Configurer le mot de passe admin";
+}
+
+document.getElementById("lock-btn").addEventListener("click", () => {
+  const val = prompt("Mot de passe admin (vide pour effacer) :", adminPassword);
+  if (val === null) return;
+  adminPassword = val.trim();
+  if (adminPassword) localStorage.setItem("adminPassword", adminPassword);
+  else localStorage.removeItem("adminPassword");
+  updateLockBtn();
+});
+
 const api = {
   async req(path, opts = {}) {
-    const res = await fetch(path, {
-      headers: { "Content-Type": "application/json" },
-      ...opts,
-    });
+    const headers = { "Content-Type": "application/json" };
+    if (adminPassword) headers["X-Admin-Password"] = adminPassword;
+    const res = await fetch(path, { headers, ...opts });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body?.error?.formErrors?.join(", ") || body?.error?.fieldErrors?.participants?.join(", ") || body?.error || `HTTP ${res.status}`);
     return body;
@@ -13,9 +31,12 @@ const api = {
   listPlayers: () => api.req("/players"),
   createPlayer: (name) => api.req("/players", { method: "POST", body: JSON.stringify({ name }) }),
   listSeasons: () => api.req("/seasons"),
-  createSeason: (name) => api.req("/seasons", { method: "POST", body: JSON.stringify({ name }) }),
+  createSeason: (payload) => api.req("/seasons", { method: "POST", body: JSON.stringify(payload) }),
+  updateSeason: (id, payload) => api.req(`/seasons/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  deleteSeason: (id) => api.req(`/seasons/${id}`, { method: "DELETE" }),
   listMatches: (seasonId) => api.req("/matches" + (seasonId ? `?seasonId=${seasonId}` : "")),
   recordMatch: (payload) => api.req("/matches", { method: "POST", body: JSON.stringify(payload) }),
+  deleteMatch: (id) => api.req(`/matches/${id}`, { method: "DELETE" }),
   leaderboard: () => api.req(`/leaderboard`),
 };
 
@@ -29,6 +50,58 @@ const LEVELS = [
   { title: "Maître du 301", minXP: 5000 },
   { title: "Phil Taylor", minXP: 10000 },
 ];
+
+// ----- Toast notifications -----
+function showToast(message, type = "info") {
+  const container = document.getElementById("toast-container");
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => toast.classList.add("show"));
+  });
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 350);
+  }, 3200);
+}
+
+// ----- Custom confirm dialog -----
+function showConfirm(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById("confirm-overlay");
+    document.getElementById("confirm-message").textContent = message;
+    overlay.classList.remove("hidden");
+
+    const ok = document.getElementById("confirm-ok");
+    const cancel = document.getElementById("confirm-cancel");
+
+    function cleanup(result) {
+      overlay.classList.add("hidden");
+      ok.removeEventListener("click", onOk);
+      cancel.removeEventListener("click", onCancel);
+      resolve(result);
+    }
+    function onOk() { cleanup(true); }
+    function onCancel() { cleanup(false); }
+    ok.addEventListener("click", onOk);
+    cancel.addEventListener("click", onCancel);
+  });
+}
+
+// ----- Loading button helper -----
+function setLoading(btn, loading) {
+  if (loading) {
+    btn.disabled = true;
+    btn.classList.add("loading");
+    btn._origText = btn.textContent;
+  } else {
+    btn.disabled = false;
+    btn.classList.remove("loading");
+    if (btn._origText !== undefined) btn.textContent = btn._origText;
+  }
+}
 
 // ----- Tabs -----
 document.querySelectorAll("nav button").forEach((b) => {
@@ -51,27 +124,33 @@ async function refreshPlayers() {
   players = await api.listPlayers();
   const ul = document.getElementById("p-list");
   ul.innerHTML = "";
+
+  if (!players.length) {
+    ul.innerHTML = '<li style="justify-content:center;color:var(--muted);font-size:0.85rem;">Aucun joueur. Créez-en un ci-dessus.</li>';
+  }
+
   for (const p of players) {
     const li = document.createElement("li");
     li.innerHTML = `
       <div class="player-info">
         <strong>${escapeHtml(p.name)}</strong>
-        <span class="muted">${p.matchCount} matchs • ${p.totalXP} XP</span>
+        <span class="muted">${p.matchCount} match${p.matchCount !== 1 ? "s" : ""} · ${p.totalXP} XP</span>
       </div>
       <button class="muted small edit-player" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Modifier</button>
     `;
     ul.appendChild(li);
   }
-  
-  ul.querySelectorAll(".edit-player").forEach(btn => {
+
+  ul.querySelectorAll(".edit-player").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const newName = prompt("Nouveau pseudo pour " + btn.dataset.name, btn.dataset.name);
-      if (newName && newName !== btn.dataset.name) {
+      if (newName && newName.trim() !== btn.dataset.name) {
         try {
           await api.req("/players/" + btn.dataset.id, { method: "PATCH", body: JSON.stringify({ name: newName.trim() }) });
+          showToast("Joueur renommé ✓", "ok");
           await refreshPlayers();
         } catch (err) {
-          alert(err.message);
+          showToast(err.message, "err");
         }
       }
     });
@@ -83,13 +162,18 @@ document.getElementById("player-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const input = document.getElementById("p-name");
   const status = document.getElementById("p-status");
+  const btn = e.submitter || e.target.querySelector('[type="submit"]');
+  setLoading(btn, true);
   try {
     await api.createPlayer(input.value.trim());
     input.value = "";
-    setStatus(status, "Ajouté", true);
+    setStatus(status, "Ajouté ✓", true);
+    showToast("Joueur créé ✓", "ok");
     await refreshPlayers();
   } catch (err) {
     setStatus(status, err.message, false);
+  } finally {
+    setLoading(btn, false);
   }
 });
 
@@ -98,12 +182,51 @@ async function refreshSeasons() {
   seasons = await api.listSeasons();
   const ul = document.getElementById("s-list");
   ul.innerHTML = "";
+
+  if (!seasons.length) {
+    ul.innerHTML = '<li style="color:var(--muted);font-size:0.85rem;">Aucune saison. Créez-en une ci-dessus.</li>';
+  }
+
   for (const s of seasons) {
     const li = document.createElement("li");
-    const date = new Date(s.startedAt).toLocaleDateString();
-    li.innerHTML = `<span>${escapeHtml(s.name)}</span><span class="muted">depuis ${date}</span>`;
+    const date = new Date(s.startedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    li.innerHTML = `
+      <div>
+        <span style="font-weight:700">${escapeHtml(s.name)}</span>
+        <span class="muted" style="font-size:0.78rem;display:block">Depuis le ${date}</span>
+      </div>
+      <div style="display:flex;gap:0.4rem">
+        <button class="edit-season small muted" data-id="${s.id}" style="width:auto">✏️ Modifier</button>
+        <button class="delete-season small" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="background:transparent;color:var(--err);width:auto">🗑️</button>
+      </div>
+    `;
+    // Store full season data on the li for edit pre-fill
+    li.dataset.season = JSON.stringify(s);
     ul.appendChild(li);
   }
+
+  ul.querySelectorAll(".edit-season").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const s = JSON.parse(btn.closest("li").dataset.season);
+      editSeason(s);
+    });
+  });
+
+  ul.querySelectorAll(".delete-season").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const ok = await showConfirm(`Supprimer la saison "${btn.dataset.name}" et tous ses matchs ? Cette action est irréversible.`);
+      if (!ok) return;
+      setLoading(btn, true);
+      try {
+        await api.deleteSeason(btn.dataset.id);
+        showToast("Saison supprimée", "ok");
+        await refreshSeasons();
+      } catch (err) {
+        showToast(err.message, "err");
+        setLoading(btn, false);
+      }
+    });
+  });
   for (const id of ["lb-season", "m-season", "ml-season"]) {
     const sel = document.getElementById(id);
     if (!sel) continue;
@@ -118,15 +241,14 @@ async function refreshSeasons() {
     }
     if (prev) sel.value = prev;
   }
-  
-  // Update rules for the currently selected season in leaderboard
+
   updateRuleDisplay(document.getElementById("lb-season").value);
 }
 
 function updateRuleDisplay(seasonId) {
-  const season = seasons.find(s => s.id == seasonId) || seasons[0];
+  const season = seasons.find((s) => s.id == seasonId) || seasons[0];
   if (!season) return;
-  
+
   document.getElementById("rule-xpOpponent").textContent = season.xpPerDefeatedOpponent;
   document.getElementById("rule-xpDouble").textContent = season.xpBonusDouble;
   document.getElementById("rule-xpTriple").textContent = season.xpBonusTriple;
@@ -139,78 +261,185 @@ function updateRuleDisplay(seasonId) {
   document.getElementById("rule-xpTueur").textContent = season.xpBonusTueurDeGeants;
 }
 
+const SEASON_DEFAULTS = {
+  xpPerDefeatedOpponent: 50,
+  xpBonusSimple: 0,
+  xpBonusDouble: 50,
+  xpBonusTriple: 100,
+  xpVampireMultiplier: 1,
+  xpSurvivorBase: 20,
+  xpBonusPoulidor: 15,
+  xpBonusJackpot: 20,
+  xpBonusEgalite: 10,
+  xpBonusTueurDeGeants: 50,
+};
+
+const SEASON_FIELD_MAP = {
+  xpPerDefeatedOpponent: "s-xpOpponent",
+  xpBonusSimple: "s-xpSimple",
+  xpBonusDouble: "s-xpDouble",
+  xpBonusTriple: "s-xpTriple",
+  xpVampireMultiplier: "s-xpVampire",
+  xpSurvivorBase: "s-xpSurvivor",
+  xpBonusPoulidor: "s-xpPoulidor",
+  xpBonusJackpot: "s-xpJackpot",
+  xpBonusEgalite: "s-xpEgalite",
+  xpBonusTueurDeGeants: "s-xpTueur",
+};
+
+function editSeason(s) {
+  document.getElementById("s-editing-id").value = s.id;
+  document.getElementById("s-name").value = s.name;
+  document.getElementById("s-submit").textContent = "Mettre à jour";
+  document.getElementById("s-cancel").classList.remove("hidden");
+
+  for (const [key, id] of Object.entries(SEASON_FIELD_MAP)) {
+    const el = document.getElementById(id);
+    if (el && s[key] !== undefined) el.value = s[key];
+  }
+
+  document.getElementById("season-form").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetSeasonForm() {
+  document.getElementById("s-editing-id").value = "";
+  document.getElementById("s-name").value = "";
+  document.getElementById("s-submit").textContent = "Créer";
+  document.getElementById("s-cancel").classList.add("hidden");
+  for (const [key, id] of Object.entries(SEASON_FIELD_MAP)) {
+    const el = document.getElementById(id);
+    if (el) el.value = SEASON_DEFAULTS[key] ?? "";
+  }
+}
+
+document.getElementById("s-cancel").addEventListener("click", resetSeasonForm);
+
 document.getElementById("season-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const editingId = document.getElementById("s-editing-id").value;
   const name = document.getElementById("s-name").value.trim();
   const status = document.getElementById("s-status");
-  
+  const btn = document.getElementById("s-submit");
+  setLoading(btn, true);
+
   const payload = { name };
-  const fields = {
-    xpPerDefeatedOpponent: "s-xpOpponent",
-    xpBonusSimple: "s-xpSimple",
-    xpBonusDouble: "s-xpDouble",
-    xpBonusTriple: "s-xpTriple",
-    xpVampireMultiplier: "s-xpVampire",
-    xpSurvivorBase: "s-xpSurvivor",
-    xpBonusPoulidor: "s-xpPoulidor",
-    xpBonusJackpot: "s-xpJackpot",
-    xpBonusEgalite: "s-xpEgalite",
-    xpBonusTueurDeGeants: "s-xpTueur"
-  };
-  
-  for (const [key, id] of Object.entries(fields)) {
+  for (const [key, id] of Object.entries(SEASON_FIELD_MAP)) {
     const el = document.getElementById(id);
     if (el && el.value !== "") payload[key] = Number(el.value);
   }
 
   try {
-    await api.req("/seasons", { method: "POST", body: JSON.stringify(payload) });
-    document.getElementById("s-name").value = "";
-    Object.values(fields).forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = "";
-    });
-    setStatus(status, "Créée", true);
+    if (editingId) {
+      const res = await api.updateSeason(editingId, payload);
+      setStatus(status, `Mise à jour ✓ (${res.matchesRecalculated} matchs recalculés)`, true);
+      showToast(`Saison mise à jour · ${res.matchesRecalculated} matchs recalculés ✓`, "ok");
+      resetSeasonForm();
+    } else {
+      await api.createSeason(payload);
+      setStatus(status, "Créée ✓", true);
+      showToast("Saison créée ✓", "ok");
+      resetSeasonForm();
+    }
     await refreshSeasons();
   } catch (err) {
     setStatus(status, err.message, false);
+  } finally {
+    setLoading(btn, false);
   }
 });
 
 // ----- Match form -----
 const participantsEl = document.getElementById("m-participants");
 
+function addNewPlayerInline(btn, selectEl) {
+  const wrap = btn.closest(".p-select-wrap");
+  btn.classList.add("hidden");
+
+  const form = document.createElement("div");
+  form.className = "inline-new-player";
+  form.innerHTML = `
+    <input type="text" class="inline-p-name" placeholder="Nom du joueur" maxlength="64" />
+    <button type="button" class="inline-p-ok" title="Créer">✓</button>
+    <button type="button" class="inline-p-cancel" title="Annuler">✗</button>
+  `;
+  wrap.appendChild(form);
+
+  const nameInput = form.querySelector(".inline-p-name");
+  const okBtn = form.querySelector(".inline-p-ok");
+  const cancelBtn = form.querySelector(".inline-p-cancel");
+  nameInput.focus();
+
+  async function create() {
+    const name = nameInput.value.trim();
+    if (!name) return;
+    setLoading(okBtn, true);
+    try {
+      const player = await api.createPlayer(name);
+      await refreshPlayers();
+      selectEl.value = player.id;
+      form.remove();
+      btn.classList.remove("hidden");
+      showToast(`Joueur "${escapeHtml(name)}" créé ✓`, "ok");
+    } catch (err) {
+      showToast(err.message, "err");
+      setLoading(okBtn, false);
+    }
+  }
+
+  function cancel() {
+    form.remove();
+    btn.classList.remove("hidden");
+  }
+
+  okBtn.addEventListener("click", create);
+  cancelBtn.addEventListener("click", cancel);
+  nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); create(); }
+    if (e.key === "Escape") cancel();
+  });
+}
+
 function addParticipantRow() {
   const row = document.createElement("div");
   const i = participantsEl.children.length;
-  row.className = "participant-row";
-  
+  row.className = "participant-row" + (i === 0 ? " winner-row" : "");
+
   if (i === 0) {
-    // Winner row
     row.innerHTML = `
       <div class="rank">🏆</div>
-      <select class="p-select" required></select>
+      <div class="p-select-wrap">
+        <select class="p-select" required></select>
+        <button type="button" class="new-player-btn">➕ Nouveau joueur</button>
+      </div>
       <select class="p-finish" title="Finition">
         <option value="SIMPLE">Finition SIMPLE</option>
-        <option value="DOUBLE">Finition DOUBLE</option>
-        <option value="TRIPLE">Finition TRIPLE / BULLE</option>
+        <option value="DOUBLE">Finition DOUBLE ✖️2</option>
+        <option value="TRIPLE">Finition TRIPLE / BULLE ✖️3</option>
       </select>
       <div style="width: 32px"></div>
     `;
   } else {
-    // Loser row
     row.innerHTML = `
       <div class="rank">💀</div>
-      <select class="p-select" required></select>
+      <div class="p-select-wrap">
+        <select class="p-select" required></select>
+        <button type="button" class="new-player-btn">➕ Nouveau joueur</button>
+      </div>
       <input type="number" class="p-score" placeholder="Score restant" min="1" max="301" required />
-      <button type="button" class="remove">×</button>
+      <button type="button" class="remove" title="Supprimer">×</button>
     `;
     row.querySelector(".remove").addEventListener("click", () => {
       row.remove();
       refreshRanks();
     });
   }
-  
+
+  const sel = row.querySelector(".p-select");
+  row.querySelector(".new-player-btn").addEventListener("click", (e) => {
+    e.preventDefault();
+    addNewPlayerInline(e.currentTarget, sel);
+  });
+
   participantsEl.appendChild(row);
   refreshParticipantOptions();
 }
@@ -228,17 +457,31 @@ function refreshParticipantOptions() {
     }
     if (prev) sel.value = prev;
   });
+
+  // Warn if same player selected twice
+  selects.forEach((sel) => {
+    sel.addEventListener("change", checkDuplicatePlayers, { once: false });
+  });
+}
+
+function checkDuplicatePlayers() {
+  const selects = [...participantsEl.querySelectorAll(".p-select")];
+  const values = selects.map((s) => s.value).filter(Boolean);
+  const hasDup = values.length !== new Set(values).size;
+  const status = document.getElementById("m-status");
+  if (hasDup) {
+    setStatus(status, "⚠️ Un joueur est sélectionné plusieurs fois", false);
+  } else if (status.textContent.startsWith("⚠️")) {
+    status.textContent = "";
+    status.className = "status";
+  }
 }
 
 function refreshRanks() {
-  const rows = [...participantsEl.querySelectorAll(".participant-row")];
-  rows.forEach((row, i) => {
+  [...participantsEl.querySelectorAll(".participant-row")].forEach((row, i) => {
     const rankEl = row.querySelector(".rank");
-    if (i === 0) {
-      rankEl.textContent = "🏆";
-    } else {
-      rankEl.textContent = "💀";
-    }
+    row.classList.toggle("winner-row", i === 0);
+    rankEl.textContent = i === 0 ? "🏆" : "💀";
   });
 }
 
@@ -247,6 +490,7 @@ document.getElementById("m-add").addEventListener("click", addParticipantRow);
 document.getElementById("match-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const status = document.getElementById("m-status");
+  const btn = e.submitter || e.target.querySelector('[type="submit"]');
   const matchId = document.getElementById("m-id").value;
   const seasonId = Number(document.getElementById("m-season").value);
   const playedAtRaw = document.getElementById("m-playedAt").value;
@@ -260,39 +504,49 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
   const winnerId = Number(winnerRow.querySelector(".p-select").value);
   const finishType = winnerRow.querySelector(".p-finish").value;
 
-  const losers = rows.slice(1).map((row) => {
-    const playerId = Number(row.querySelector(".p-select").value);
-    const scoreLeft = Number(row.querySelector(".p-score").value);
-    return { playerId, scoreLeft };
-  });
+  const losers = rows.slice(1).map((row) => ({
+    playerId: Number(row.querySelector(".p-select").value),
+    scoreLeft: Number(row.querySelector(".p-score").value),
+  }));
 
   if (!winnerId || losers.some((l) => !l.playerId || !l.scoreLeft)) {
     return setStatus(status, "Tous les champs sont requis", false);
   }
 
-  const payload = { 
-    seasonId, 
-    winner: { playerId: winnerId, finishType },
-    losers
-  };
+  // Check duplicates
+  const allIds = [winnerId, ...losers.map((l) => l.playerId)];
+  if (allIds.length !== new Set(allIds).size) {
+    return setStatus(status, "Un joueur est sélectionné plusieurs fois", false);
+  }
+
+  const payload = { seasonId, winner: { playerId: winnerId, finishType }, losers };
   if (playedAtRaw) payload.playedAt = new Date(playedAtRaw).toISOString();
 
+  setLoading(btn, true);
   try {
     let result;
     if (matchId) {
       result = await api.req("/matches/" + matchId, { method: "PUT", body: JSON.stringify(payload) });
-      // Reset form
       document.getElementById("m-id").value = "";
       document.getElementById("match-form-title").textContent = "Enregistrer un match terminé";
+      showToast("Match mis à jour ✓", "ok");
     } else {
       result = await api.recordMatch(payload);
     }
     showMatchSummary(result);
+    const prevPlayers = [...participantsEl.querySelectorAll(".p-select")].map((s) => s.value);
     participantsEl.innerHTML = "";
-    addParticipantRow(); // winner
-    addParticipantRow(); // one loser
+    const rowCount = Math.max(2, prevPlayers.length);
+    for (let i = 0; i < rowCount; i++) addParticipantRow();
+    prevPlayers.forEach((id, i) => {
+      const sel = participantsEl.children[i]?.querySelector(".p-select");
+      if (sel && id) sel.value = id;
+    });
+    status.textContent = "";
   } catch (err) {
     setStatus(status, err.message, false);
+  } finally {
+    setLoading(btn, false);
   }
 });
 
@@ -300,40 +554,37 @@ function showMatchSummary(match) {
   const overlay = document.getElementById("modal-overlay");
   const list = document.getElementById("modal-results-list");
   list.innerHTML = "";
-  
+
   const sorted = [...match.participants].sort((a, b) => a.rank - b.rank);
   const winner = sorted[0];
-  
+
   document.getElementById("modal-winner-name").textContent = winner.player.name;
-  
+
   const medalsMap = {
-    "POULIDOR": "🥈",
-    "JACKPOT": "🎰",
-    "EGALITE": "🤝",
-    "TUEUR_DE_GEANTS": "⚔️🏆"
+    POULIDOR: "🥈",
+    JACKPOT: "🎰",
+    EGALITE: "🤝",
+    TUEUR_DE_GEANTS: "⚔️🏆",
   };
 
-  sorted.forEach(p => {
+  sorted.forEach((p) => {
     const row = document.createElement("div");
     row.className = "modal-row" + (p.rank === 1 ? " winner" : "");
-    
-    const medalsHtml = (p.medals || []).map(m => `<span>${medalsMap[m] || m}</span>`).join(" ");
-    
+    const medalsHtml = (p.medals || []).map((m) => `<span>${medalsMap[m] || m}</span>`).join(" ");
     row.innerHTML = `
       <div class="modal-player">
-        <span class="name">${p.player.name}</span>
+        <span class="name">${escapeHtml(p.player.name)}</span>
         <div class="medals">${medalsHtml}</div>
       </div>
       <div class="xp">+${p.xpEarned} XP</div>
     `;
     list.appendChild(row);
   });
-  
+
   overlay.classList.remove("hidden");
 }
 
 document.getElementById("modal-close").addEventListener("click", () => {
-  console.log("Closing modal...");
   document.getElementById("modal-overlay").classList.add("hidden");
 });
 
@@ -345,46 +596,60 @@ document.getElementById("modal-overlay").addEventListener("click", (e) => {
 
 // ----- Matches list -----
 async function refreshMatchesList() {
-  const seasonId = document.getElementById("ml-season").value;
-  const matches = await api.listMatches(seasonId);
-  const container = document.getElementById("ml-list");
-  container.innerHTML = "";
-  if (!matches.length) {
-    container.innerHTML = '<p class="muted">Aucun match.</p>';
-    return;
-  }
-  for (const m of matches) {
-    const card = document.createElement("div");
-    card.className = "match-card";
-    const when = new Date(m.playedAt).toLocaleString();
-    const sorted = [...m.participants].sort((a, b) => a.rank - b.rank);
-    const lis = sorted
-      .map((p) => {
-        const detail = p.rank === 1 ? ` (Finition ${p.finishType})` : ` (Reste ${p.scoreLeft})`;
-        const xp = `<span class="xp-gain plus">${p.xpEarned >= 0 ? "+" : ""}${p.xpEarned} XP</span>`;
-        
-        const medalsMap = {
-          "POULIDOR": "🥈",
-          "JACKPOT": "🎰",
-          "EGALITE": "🤝",
-          "TUEUR_DE_GEANTS": "⚔️🏆"
-        };
-        const medalsHtml = (p.medals || []).map(m => `<span class="medal-icon" title="${m}">${medalsMap[m] || m}</span>`).join(" ");
-
-        return `<li><strong>${p.rank}.</strong> ${escapeHtml(p.player.name)}${detail} — ${xp} ${medalsHtml}</li>`;
-      })
-      .join("");
-    card.innerHTML = `
-      <header>
-        <div><strong>Match #${m.id}</strong> <span class="muted">${when}</span></div>
-        <button class="muted small edit-match" data-id="${m.id}">Modifier</button>
-      </header>
-      <ul>${lis}</ul>
-    `;
-    card.querySelector(".edit-match").addEventListener("click", () => {
-      editMatch(m);
-    });
-    container.appendChild(card);
+  const btn = document.getElementById("ml-refresh");
+  setLoading(btn, true);
+  try {
+    const seasonId = document.getElementById("ml-season").value;
+    const matches = await api.listMatches(seasonId);
+    const container = document.getElementById("ml-list");
+    container.innerHTML = "";
+    if (!matches.length) {
+      container.innerHTML = '<p class="muted" style="text-align:center;padding:2rem 0;">Aucun match enregistré.</p>';
+      return;
+    }
+    for (const m of matches) {
+      const card = document.createElement("div");
+      card.className = "match-card";
+      const when = new Date(m.playedAt).toLocaleString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      const sorted = [...m.participants].sort((a, b) => a.rank - b.rank);
+      const lis = sorted
+        .map((p) => {
+          const detail = p.rank === 1 ? ` · Finition ${p.finishType}` : ` · Reste ${p.scoreLeft} pts`;
+          const xp = `<span class="xp-gain plus">+${p.xpEarned} XP</span>`;
+          const medalsMap = { POULIDOR: "🥈", JACKPOT: "🎰", EGALITE: "🤝", TUEUR_DE_GEANTS: "⚔️🏆" };
+          const medalsHtml = (p.medals || []).map((m) => `<span class="medal-icon" title="${m}">${medalsMap[m] || m}</span>`).join("");
+          return `<li><span class="match-li-left"><strong>${p.rank === 1 ? "🏆" : p.rank + "."}</strong> ${escapeHtml(p.player.name)}<span class="muted" style="font-size:0.8rem">${detail}</span></span><span class="match-li-right">${xp}${medalsHtml}</span></li>`;
+        })
+        .join("");
+      card.innerHTML = `
+        <header>
+          <div><strong>Match #${m.id}</strong> <span class="muted" style="font-size:0.8rem">${when}</span></div>
+          <div style="display:flex;gap:0.4rem">
+            <button class="muted small edit-match" data-id="${m.id}" style="width:auto">✏️ Modifier</button>
+            <button class="small delete-match" data-id="${m.id}" style="background:transparent;color:var(--err);width:auto">🗑️</button>
+          </div>
+        </header>
+        <ul>${lis}</ul>
+      `;
+      card.querySelector(".edit-match").addEventListener("click", () => editMatch(m));
+      card.querySelector(".delete-match").addEventListener("click", async () => {
+        const ok = await showConfirm(`Supprimer le match #${m.id} du ${when} ? Cette action est irréversible.`);
+        if (!ok) return;
+        const btn = card.querySelector(".delete-match");
+        setLoading(btn, true);
+        try {
+          await api.deleteMatch(m.id);
+          showToast(`Match #${m.id} supprimé`, "ok");
+          await refreshMatchesList();
+        } catch (err) {
+          showToast(err.message, "err");
+          setLoading(btn, false);
+        }
+      });
+      container.appendChild(card);
+    }
+  } finally {
+    setLoading(btn, false);
   }
 }
 
@@ -393,112 +658,127 @@ function editMatch(m) {
   document.getElementById("m-season").value = m.seasonId;
   document.getElementById("m-playedAt").value = new Date(m.playedAt).toISOString().slice(0, 16);
   document.getElementById("match-form-title").textContent = "Modifier le match #" + m.id;
-  
+
   participantsEl.innerHTML = "";
   const sorted = [...m.participants].sort((a, b) => a.rank - b.rank);
-  
   sorted.forEach((p, i) => {
     addParticipantRow();
     const row = participantsEl.children[i];
     row.querySelector(".p-select").value = p.playerId;
-    if (p.rank === 1) {
-      row.querySelector(".p-finish").value = p.finishType;
-    } else {
-      row.querySelector(".p-score").value = p.scoreLeft;
-    }
+    if (p.rank === 1) row.querySelector(".p-finish").value = p.finishType;
+    else row.querySelector(".p-score").value = p.scoreLeft;
   });
 
-  // Switch tab
   document.querySelector('button[data-tab="match"]').click();
 }
+
 document.getElementById("ml-refresh").addEventListener("click", refreshMatchesList);
 
 // ----- Leaderboard -----
 async function refreshLeaderboard() {
-  const data = await api.leaderboard();
-  const tbody = document.querySelector("#lb-table tbody");
-  const podium = document.getElementById("lb-podium");
-  const empty = document.getElementById("lb-empty");
-  
-  tbody.innerHTML = "";
-  podium.innerHTML = "";
-  
-  if (!data || !data.length) {
-    empty.classList.remove("hidden");
-    return;
-  }
-  empty.classList.add("hidden");
+  const btn = document.getElementById("lb-refresh");
+  setLoading(btn, true);
+  try {
+    const data = await api.leaderboard();
+    const tbody = document.querySelector("#lb-table tbody");
+    const podium = document.getElementById("lb-podium");
+    const empty = document.getElementById("lb-empty");
 
-  // Render Podium for Top 3
-  const top3 = data.slice(0, 3);
-  const podiumOrder = [1, 0, 2]; // 2nd, 1st, 3rd for visual balance
-  
-  const podiumHtml = podiumOrder.map(idx => {
-    const p = top3[idx];
-    if (!p) return '<div class="podium-spot empty"></div>';
-    const rank = idx + 1;
-    const crown = rank === 1 ? "👑" : rank === 2 ? "🥈" : "🥉";
-    return `
-      <div class="podium-spot rank-${rank}">
-        <div class="podium-crown">${crown}</div>
-        <div class="podium-name">${escapeHtml(p.name)}</div>
-        <div class="podium-xp">${p.totalXP} XP</div>
-        <div class="podium-base"></div>
-      </div>
-    `;
-  }).join("");
-  podium.innerHTML = podiumHtml;
+    tbody.innerHTML = "";
+    podium.innerHTML = "";
 
-  // Render Table
-  data.forEach((r, i) => {
-    const nextLevelIdx = LEVELS.findIndex(l => l.minXP > r.totalXP);
-    const currentLevel = LEVELS[nextLevelIdx - 1] || LEVELS[LEVELS.length - 1];
-    const nextLevel = LEVELS[nextLevelIdx];
-    
-    let progressPercent = 100;
-    let xpRemaining = 0;
-    
-    if (nextLevel) {
-      const range = nextLevel.minXP - currentLevel.minXP;
-      const currentProgress = r.totalXP - currentLevel.minXP;
-      progressPercent = Math.min(100, Math.floor((currentProgress / range) * 100));
-      xpRemaining = nextLevel.minXP - r.totalXP;
+    if (!data || !data.length) {
+      empty.classList.remove("hidden");
+      return;
     }
+    empty.classList.add("hidden");
 
-    const tr = document.createElement("tr");
-    const levelSlug = r.level.toLowerCase().replace(/\s+/g, '-');
-    tr.innerHTML = `
-      <td>${i + 1}</td>
-      <td><strong>${escapeHtml(r.name)}</strong></td>
-      <td>
-        <div class="lb-stats">
-          <span>${r.matchCount} matchs</span>
-          <span class="lb-xp-total">${r.totalXP} XP</span>
-        </div>
-      </td>
-      <td>${r.totalXP} XP</td>
-      <td>
-        <div class="xp-progress-bg" title="${nextLevel ? `Encore ${xpRemaining} XP avant le prochain niveau` : 'Niveau Max !'}">
-          <div class="xp-progress-bar" style="width: ${progressPercent}%"></div>
-          <span class="xp-progress-text">${progressPercent}%</span>
-        </div>
-      </td>
-      <td><span class="level-badge level-${levelSlug}">${r.level}</span></td>
-    `;
-    tbody.appendChild(tr);
-  });
+    // Podium top 3
+    const top3 = data.slice(0, 3);
+    const podiumOrder = [1, 0, 2];
+    podium.innerHTML = podiumOrder
+      .map((idx) => {
+        const p = top3[idx];
+        if (!p) return '<div class="podium-spot empty"></div>';
+        const rank = idx + 1;
+        const crown = rank === 1 ? "👑" : rank === 2 ? "🥈" : "🥉";
+        return `
+          <div class="podium-spot rank-${rank}">
+            <div class="podium-crown">${crown}</div>
+            <div class="podium-name">${escapeHtml(p.name)}</div>
+            <div class="podium-xp">${p.totalXP} XP</div>
+            <div class="podium-base"></div>
+          </div>
+        `;
+      })
+      .join("");
+
+    // Table rows — render first with width 0, then animate
+    const bars = [];
+    data.forEach((r, i) => {
+      const nextLevelIdx = LEVELS.findIndex((l) => l.minXP > r.totalXP);
+      const currentLevel = LEVELS[nextLevelIdx - 1] || LEVELS[LEVELS.length - 1];
+      const nextLevel = LEVELS[nextLevelIdx];
+
+      let progressPercent = 100;
+      let xpRemaining = 0;
+      let xpLabel = "Niveau Max !";
+
+      if (nextLevel) {
+        const range = nextLevel.minXP - currentLevel.minXP;
+        const currentProgress = r.totalXP - currentLevel.minXP;
+        progressPercent = Math.min(100, Math.floor((currentProgress / range) * 100));
+        xpRemaining = nextLevel.minXP - r.totalXP;
+        xpLabel = `${xpRemaining} XP avant ${nextLevel.title}`;
+      }
+
+      const levelSlug = r.level.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td><strong>${escapeHtml(r.name)}</strong></td>
+        <td>
+          <div class="lb-stats">
+            <span>${r.matchCount} match${r.matchCount !== 1 ? "s" : ""}</span>
+            <span class="lb-xp-total">${r.totalXP} XP</span>
+          </div>
+        </td>
+        <td>${r.totalXP} XP</td>
+        <td>
+          <div class="xp-progress-bg">
+            <div class="xp-progress-bar" data-pct="${progressPercent}" style="width:0%"></div>
+          </div>
+          <div class="xp-next-label">${xpLabel}</div>
+        </td>
+        <td><span class="level-badge level-${levelSlug}">${r.level}</span></td>
+      `;
+      tbody.appendChild(tr);
+      bars.push(tr.querySelector(".xp-progress-bar"));
+    });
+
+    // Animate bars after paint
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        bars.forEach((bar) => {
+          bar.style.width = bar.dataset.pct + "%";
+        });
+      });
+    });
+  } finally {
+    setLoading(btn, false);
+  }
 }
 
 function renderLevelsLegend() {
   const container = document.getElementById("levels-legend");
   if (!container) return;
-  
   container.innerHTML = LEVELS.map((l, i) => {
     const next = LEVELS[i + 1];
-    const range = next ? `${l.minXP} - ${next.minXP - 1} XP` : `${l.minXP}+ XP`;
+    const range = next ? `${l.minXP} – ${next.minXP - 1} XP` : `${l.minXP}+ XP`;
+    const slug = l.title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
     return `
       <div class="level-card">
-        <span class="level-badge">${l.title}</span>
+        <span class="level-badge level-${slug}">${l.title}</span>
         <span class="level-range">${range}</span>
       </div>
     `;
@@ -510,16 +790,22 @@ document.getElementById("lb-season").addEventListener("change", () => {
   refreshLeaderboard();
   updateRuleDisplay(document.getElementById("lb-season").value);
 });
+
 document.getElementById("lb-recalculate").addEventListener("click", async () => {
   const seasonId = document.getElementById("lb-season").value;
-  if (!seasonId) return alert("Choisissez une saison");
-  if (!confirm("Voulez-vous recalculer tous les scores d'XP de cette saison avec les règles actuelles ?")) return;
+  if (!seasonId) return showToast("Choisissez une saison", "err");
+  const ok = await showConfirm("Recalculer tous les scores XP de cette saison avec les règles actuelles ?");
+  if (!ok) return;
+  const btn = document.getElementById("lb-recalculate");
+  setLoading(btn, true);
   try {
     const res = await api.req(`/seasons/${seasonId}/recalculate`, { method: "POST" });
-    alert(`Terminé ! ${res.matchesProcessed} matchs recalculés.`);
+    showToast(`${res.matchesProcessed} matchs recalculés ✓`, "ok");
     await refreshLeaderboard();
   } catch (err) {
-    alert(err.message);
+    showToast(err.message, "err");
+  } finally {
+    setLoading(btn, false);
   }
 });
 
@@ -528,9 +814,9 @@ function onTabShow(tab) {
   if (tab === "leaderboard") {
     refreshLeaderboard();
     renderLevelsLegend();
-  }
-  else if (tab === "matches") refreshMatchesList();
-  else if (tab === "match" && participantsEl.children.length === 0) {
+  } else if (tab === "matches") {
+    refreshMatchesList();
+  } else if (tab === "match" && participantsEl.children.length === 0) {
     addParticipantRow();
     addParticipantRow();
   }
@@ -542,9 +828,11 @@ function escapeHtml(s) {
 
 // ----- Boot -----
 (async function init() {
+  updateLockBtn();
   await refreshPlayers();
   await refreshSeasons();
   addParticipantRow();
   addParticipantRow();
   await refreshLeaderboard();
+  renderLevelsLegend();
 })();

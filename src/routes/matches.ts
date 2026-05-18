@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { recordMatchSchema } from "../schemas";
 import { calculateMatchResults, FinishType } from "../scoring";
+import { requireAdminPassword } from "../middleware";
 
 export const matchesRouter = Router();
 
@@ -86,7 +87,19 @@ matchesRouter.get("/", async (req, res) => {
   res.json(matches);
 });
 
-matchesRouter.put("/:id", async (req, res) => {
+matchesRouter.delete("/:id", requireAdminPassword, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid match id" });
+  }
+  const match = await prisma.match.findUnique({ where: { id } });
+  if (!match) return res.status(404).json({ error: "Match not found" });
+
+  await prisma.match.delete({ where: { id } });
+  return res.status(204).send();
+});
+
+matchesRouter.put("/:id", requireAdminPassword, async (req, res) => {
   const id = Number(req.params.id);
   const parsed = recordMatchSchema.safeParse(req.body);
   if (!parsed.success) {
