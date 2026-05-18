@@ -24,6 +24,7 @@ export interface XPConfig {
   xpBonusPhenix: number;
   xpBonusSerialWinner: number;
   xpBonusBenjamin: number;
+  bonusVainqueurParRang: boolean;
 }
 
 /**
@@ -48,7 +49,18 @@ export function calculateMatchResults(
   if (finishType === "TRIPLE") finishBonus = config.xpBonusTriple;
   else if (finishType === "DOUBLE") finishBonus = config.xpBonusDouble;
 
-  let winnerXP = (nAdversaries * config.xpPerDefeatedOpponent) + finishBonus + (totalScoreLeft * config.xpVampireMultiplier);
+  let xpFromLosers: number;
+  if (config.bonusVainqueurParRang) {
+    const winnerTier = getLevelIndex(winnerLevel);
+    xpFromLosers = losers.reduce((sum, l) => {
+      const tierDiff = Math.max(0, winnerTier - getLevelIndex(l.level));
+      const factor = Math.max(0, 1 - 0.25 * tierDiff);
+      return sum + Math.floor(config.xpPerDefeatedOpponent * factor);
+    }, 0);
+  } else {
+    xpFromLosers = nAdversaries * config.xpPerDefeatedOpponent;
+  }
+  let winnerXP = xpFromLosers + finishBonus + (totalScoreLeft * config.xpVampireMultiplier);
   const winnerMedals: string[] = [];
 
   // Tueur de Géants: Winner level < any loser level
@@ -147,6 +159,13 @@ export const LEVELS = [
   { title: "Maître du 301", minXP: 5000 },
   { title: "Phil Taylor", minXP: 10000 },
 ];
+
+function getLevelIndex(xp: number): number {
+  for (let i = LEVELS.length - 1; i >= 0; i--) {
+    if (xp >= LEVELS[i].minXP) return i;
+  }
+  return 0;
+}
 
 export function getLevel(xp: number) {
   for (let i = LEVELS.length - 1; i >= 0; i--) {

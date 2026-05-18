@@ -305,6 +305,9 @@ function updateRuleDisplay(seasonId) {
 
   const endEl = document.getElementById("lb-season-end");
   if (endEl) endEl.textContent = seasonEndLabel(season);
+
+  const bvrEl = document.getElementById("rule-bonusVainqueurParRang");
+  if (bvrEl) bvrEl.style.display = season.bonusVainqueurParRang ? "block" : "none";
 }
 
 const SEASON_DEFAULTS = {
@@ -321,6 +324,7 @@ const SEASON_DEFAULTS = {
   xpBonusPhenix: 0,
   xpBonusSerialWinner: 0,
   xpBonusBenjamin: 0,
+  bonusVainqueurParRang: false,
 };
 
 const SEASON_FIELD_MAP = {
@@ -349,6 +353,8 @@ function editSeason(s) {
     const el = document.getElementById(id);
     if (el && s[key] !== undefined) el.value = s[key];
   }
+  const cbRang = document.getElementById("s-bonusVainqueurParRang");
+  if (cbRang) cbRang.checked = !!s.bonusVainqueurParRang;
 
   document.getElementById("season-form").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -362,6 +368,8 @@ function resetSeasonForm() {
     const el = document.getElementById(id);
     if (el) el.value = SEASON_DEFAULTS[key] ?? "";
   }
+  const cbRang = document.getElementById("s-bonusVainqueurParRang");
+  if (cbRang) cbRang.checked = false;
 }
 
 document.getElementById("s-cancel").addEventListener("click", resetSeasonForm);
@@ -379,6 +387,8 @@ document.getElementById("season-form").addEventListener("submit", async (e) => {
     const el = document.getElementById(id);
     if (el && el.value !== "") payload[key] = Number(el.value);
   }
+  const cbRang = document.getElementById("s-bonusVainqueurParRang");
+  if (cbRang) payload.bonusVainqueurParRang = cbRang.checked;
 
   try {
     if (editingId) {

@@ -75,6 +75,7 @@ matchesRouter.post("/", async (req, res) => {
     xpBonusPhenix: season.xpBonusPhenix,
     xpBonusSerialWinner: season.xpBonusSerialWinner,
     xpBonusBenjamin: season.xpBonusBenjamin,
+    bonusVainqueurParRang: season.bonusVainqueurParRang,
   };
 
   const loserXPBeforeMap = new Map<number, number>();
@@ -186,6 +187,7 @@ matchesRouter.put("/:id", requireAdminPassword, async (req, res) => {
     xpBonusPhenix: season.xpBonusPhenix,
     xpBonusSerialWinner: season.xpBonusSerialWinner,
     xpBonusBenjamin: season.xpBonusBenjamin,
+    bonusVainqueurParRang: season.bonusVainqueurParRang,
   };
 
   const loserXPBeforeMap = new Map<number, number>();

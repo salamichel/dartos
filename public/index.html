@@ -90,6 +90,7 @@
             <li>🔥🔥 <strong>Serial Winner</strong> : +<span id="rule-xpSerialWinner">0</span> XP (3ᵉ victoire d'affilée)</li>
             <li>🥉 <strong>Benjamin</strong> : +<span id="rule-xpBenjamin">0</span> XP (Dernier mais proche du finish)</li>
           </ul>
+          <p id="rule-bonusVainqueurParRang" class="muted" style="font-size:0.85rem;display:none">⚖️ Bonus vainqueur pondéré par palier actif (−25% par palier d'écart, plancher 0)</p>
         </div>
         
         <p class="levels-info">Niveaux : Pousse-Caillou (0), Lanceur du Dimanche (500), Sniper de Comptoir (2000), Maître du 301 (5000), Phil Taylor (10000).</p>
@@ -186,6 +187,13 @@
           </label>
           <label>🥉 Benjamin
             <input type="number" id="s-xpBenjamin" value="0" />
+          </label>
+        </div>
+        <h3>⚖️ Règles avancées</h3>
+        <div class="rules-config">
+          <label class="checkbox-label" style="flex-direction:row;align-items:center;gap:0.5rem;cursor:pointer">
+            <input type="checkbox" id="s-bonusVainqueurParRang" />
+            Bonus vainqueur pondéré par palier de niveau (−25% par palier d'écart)
           </label>
         </div>
         <div class="actions" style="display:flex;gap:0.5rem">

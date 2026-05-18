@@ -205,6 +205,7 @@ seasonsRouter.patch("/:id", requireAdminPassword, async (req, res) => {
       xpBonusPhenix: updated.xpBonusPhenix,
       xpBonusSerialWinner: updated.xpBonusSerialWinner,
       xpBonusBenjamin: updated.xpBonusBenjamin,
+      bonusVainqueurParRang: updated.bonusVainqueurParRang,
     });
   });
 
@@ -250,6 +251,7 @@ seasonsRouter.post("/:id/recalculate", requireAdminPassword, async (req, res) =>
       xpBonusPhenix: season.xpBonusPhenix,
       xpBonusSerialWinner: season.xpBonusSerialWinner,
       xpBonusBenjamin: season.xpBonusBenjamin,
+      bonusVainqueurParRang: season.bonusVainqueurParRang,
     });
   });
 
