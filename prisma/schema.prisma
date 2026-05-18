@@ -63,6 +63,7 @@ model MatchParticipant {
   playerId   Int     @map("player_id")
   rank       Int
   scoreLeft  Int?    @map("score_left") // set for all losers
+  xpBefore   Int     @default(0) @map("xp_before") // XP before this match
   xpEarned   Int     @default(0) @map("xp_earned")
   finishType String? @map("finish_type") // set for the winner ('SIMPLE', 'DOUBLE', 'TRIPLE')
   medals     String[] @default([]) // names of earned badges (POULIDOR, JACKPOT, etc.)

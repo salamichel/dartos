@@ -30,9 +30,12 @@ matchesRouter.post("/", async (req, res) => {
   }
 
   const playerLevels = new Map<number, number>();
+  const playerXPBefore = new Map<number, number>();
   foundPlayers.forEach(p => {
     const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
-    playerLevels.set(p.id, Math.max(0, totalXP));
+    const clampedXP = Math.max(0, totalXP);
+    playerLevels.set(p.id, clampedXP);
+    playerXPBefore.set(p.id, clampedXP);
   });
 
   const config = {
@@ -48,12 +51,19 @@ matchesRouter.post("/", async (req, res) => {
     xpBonusTueurDeGeants: season.xpBonusTueurDeGeants,
   };
 
+  const loserXPBeforeMap = new Map<number, number>();
+  losers.forEach(l => {
+    loserXPBeforeMap.set(l.playerId, playerXPBefore.get(l.playerId) || 0);
+  });
+
   const results = calculateMatchResults(
     winner.playerId,
     winner.finishType as FinishType,
     losers.map(l => ({ ...l, level: playerLevels.get(l.playerId) || 0 })),
     playerLevels.get(winner.playerId) || 0,
-    config
+    config,
+    playerXPBefore.get(winner.playerId) || 0,
+    loserXPBeforeMap
   );
 
   const match = await prisma.match.create({
@@ -65,6 +75,7 @@ matchesRouter.post("/", async (req, res) => {
           playerId: r.playerId,
           rank: r.rank,
           scoreLeft: r.scoreLeft,
+          xpBefore: r.xpBefore,
           xpEarned: r.xpEarned,
           finishType: r.finishType,
           medals: r.medals,
@@ -120,9 +131,12 @@ matchesRouter.put("/:id", requireAdminPassword, async (req, res) => {
   });
 
   const playerLevels = new Map<number, number>();
+  const playerXPBefore = new Map<number, number>();
   foundPlayers.forEach(p => {
     const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
-    playerLevels.set(p.id, Math.max(0, totalXP));
+    const clampedXP = Math.max(0, totalXP);
+    playerLevels.set(p.id, clampedXP);
+    playerXPBefore.set(p.id, clampedXP);
   });
 
   const config = {
@@ -138,12 +152,19 @@ matchesRouter.put("/:id", requireAdminPassword, async (req, res) => {
     xpBonusTueurDeGeants: season.xpBonusTueurDeGeants,
   };
 
+  const loserXPBeforeMap = new Map<number, number>();
+  losers.forEach(l => {
+    loserXPBeforeMap.set(l.playerId, playerXPBefore.get(l.playerId) || 0);
+  });
+
   const results = calculateMatchResults(
     winner.playerId,
     winner.finishType as FinishType,
     losers.map(l => ({ ...l, level: playerLevels.get(l.playerId) || 0 })),
     playerLevels.get(winner.playerId) || 0,
-    config
+    config,
+    playerXPBefore.get(winner.playerId) || 0,
+    loserXPBeforeMap
   );
 
   const updatedMatch = await prisma.$transaction(async (tx) => {
@@ -158,6 +179,7 @@ matchesRouter.put("/:id", requireAdminPassword, async (req, res) => {
             playerId: r.playerId,
             rank: r.rank,
             scoreLeft: r.scoreLeft,
+            xpBefore: r.xpBefore,
             xpEarned: r.xpEarned,
             finishType: r.finishType,
             medals: r.medals,
