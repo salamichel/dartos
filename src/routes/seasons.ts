@@ -87,6 +87,18 @@ seasonsRouter.get("/:id/leaderboard", async (req, res) => {
   res.json({ seasonId, seasonName: season.name, leaderboard });
 });
 
+seasonsRouter.delete("/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid season id" });
+  }
+  const season = await prisma.season.findUnique({ where: { id } });
+  if (!season) return res.status(404).json({ error: "Season not found" });
+
+  await prisma.season.delete({ where: { id } });
+  return res.status(204).send();
+});
+
 seasonsRouter.post("/:id/recalculate", async (req, res) => {
   const id = Number(req.params.id);
   const season = await prisma.season.findUnique({

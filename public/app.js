@@ -14,6 +14,7 @@ const api = {
   createPlayer: (name) => api.req("/players", { method: "POST", body: JSON.stringify({ name }) }),
   listSeasons: () => api.req("/seasons"),
   createSeason: (payload) => api.req("/seasons", { method: "POST", body: JSON.stringify(payload) }),
+  deleteSeason: (id) => api.req(`/seasons/${id}`, { method: "DELETE" }),
   listMatches: (seasonId) => api.req("/matches" + (seasonId ? `?seasonId=${seasonId}` : "")),
   recordMatch: (payload) => api.req("/matches", { method: "POST", body: JSON.stringify(payload) }),
   leaderboard: () => api.req(`/leaderboard`),
@@ -169,9 +170,31 @@ async function refreshSeasons() {
   for (const s of seasons) {
     const li = document.createElement("li");
     const date = new Date(s.startedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-    li.innerHTML = `<span>${escapeHtml(s.name)}</span><span class="muted">Depuis le ${date}</span>`;
+    li.innerHTML = `
+      <div>
+        <span style="font-weight:700">${escapeHtml(s.name)}</span>
+        <span class="muted" style="font-size:0.78rem;display:block">Depuis le ${date}</span>
+      </div>
+      <button class="delete-season small" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="background:transparent;color:var(--err);width:auto" title="Supprimer la saison">🗑️ Supprimer</button>
+    `;
     ul.appendChild(li);
   }
+
+  ul.querySelectorAll(".delete-season").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const ok = await showConfirm(`Supprimer la saison "${btn.dataset.name}" et tous ses matchs ? Cette action est irréversible.`);
+      if (!ok) return;
+      setLoading(btn, true);
+      try {
+        await api.deleteSeason(btn.dataset.id);
+        showToast("Saison supprimée", "ok");
+        await refreshSeasons();
+      } catch (err) {
+        showToast(err.message, "err");
+        setLoading(btn, false);
+      }
+    });
+  });
   for (const id of ["lb-season", "m-season", "ml-season"]) {
     const sel = document.getElementById(id);
     if (!sel) continue;
