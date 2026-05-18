@@ -7,6 +7,7 @@ import { requireAdminPassword } from "../middleware";
 
 type MatchWithParticipants = {
   id: number;
+  playedAt: Date;
   participants: {
     playerId: number;
     rank: number;
@@ -23,33 +24,53 @@ async function recalculateMatches(
   const allPlayerIds = [...new Set(matches.flatMap(m => m.participants.map(p => p.playerId)))];
   const players = await tx.player.findMany({
     where: { id: { in: allPlayerIds } },
-    include: { participations: { select: { xpEarned: true } } },
-  });
-  const playerLevels = new Map<number, number>();
-  players.forEach(p => {
-    const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
-    playerLevels.set(p.id, Math.max(0, totalXP));
+    include: { participations: { select: { matchId: true, xpEarned: true } } },
   });
 
-  for (const match of matches) {
+  const sortedMatches = [...matches].sort((a, b) => a.playedAt.getTime() - b.playedAt.getTime());
+
+  for (const match of sortedMatches) {
+    const playerLevels = new Map<number, number>();
+    const playerXPBefore = new Map<number, number>();
+
+    players.forEach(p => {
+      const xpBefore = p.participations
+        .filter(part => {
+          const matchIndex = sortedMatches.findIndex(m => m.id === part.matchId);
+          const currentMatchIndex = sortedMatches.findIndex(m => m.id === match.id);
+          return matchIndex < currentMatchIndex;
+        })
+        .reduce((sum, part) => sum + part.xpEarned, 0);
+      const clampedXP = Math.max(0, xpBefore);
+      playerLevels.set(p.id, clampedXP);
+      playerXPBefore.set(p.id, clampedXP);
+    });
+
     const winnerPart = match.participants.find(p => p.rank === 1);
     const losers = match.participants
       .filter(p => p.rank > 1)
       .map(p => ({ playerId: p.playerId, scoreLeft: p.scoreLeft ?? 0 }));
     if (!winnerPart) continue;
 
+    const loserXPBeforeMap = new Map<number, number>();
+    losers.forEach(l => {
+      loserXPBeforeMap.set(l.playerId, playerXPBefore.get(l.playerId) ?? 0);
+    });
+
     const newScores = calculateMatchResults(
       winnerPart.playerId,
       winnerPart.finishType as any,
       losers.map(l => ({ ...l, level: playerLevels.get(l.playerId) ?? 0 })),
       playerLevels.get(winnerPart.playerId) ?? 0,
-      config
+      config,
+      playerXPBefore.get(winnerPart.playerId) ?? 0,
+      loserXPBeforeMap
     );
 
     for (const ns of newScores) {
       await tx.matchParticipant.update({
         where: { matchId_playerId: { matchId: match.id, playerId: ns.playerId } },
-        data: { xpEarned: ns.xpEarned, medals: ns.medals },
+        data: { xpBefore: ns.xpBefore, xpEarned: ns.xpEarned, medals: ns.medals },
       });
     }
   }

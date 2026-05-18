@@ -4,6 +4,7 @@ export interface MatchParticipantResult {
   playerId: number;
   rank: number;
   scoreLeft: number | null;
+  xpBefore: number;
   xpEarned: number;
   finishType?: FinishType;
   medals: string[];
@@ -30,7 +31,9 @@ export function calculateMatchResults(
   finishType: FinishType,
   losers: { playerId: number; scoreLeft: number; level: number }[],
   winnerLevel: number,
-  config: XPConfig
+  config: XPConfig,
+  winnerXPBefore: number = 0,
+  loserXPBefore: Map<number, number> = new Map()
 ): MatchParticipantResult[] {
   const sortedLosers = [...losers].sort((a, b) => a.scoreLeft - b.scoreLeft);
   const nAdversaries = losers.length;
@@ -55,6 +58,7 @@ export function calculateMatchResults(
     playerId: winnerId,
     rank: 1,
     scoreLeft: null,
+    xpBefore: winnerXPBefore,
     xpEarned: winnerXP,
     finishType,
     medals: winnerMedals,
@@ -91,6 +95,7 @@ export function calculateMatchResults(
       playerId: loser.playerId,
       rank,
       scoreLeft: loser.scoreLeft,
+      xpBefore: loserXPBefore.get(loser.playerId) ?? 0,
       xpEarned: xp,
       medals,
     });
