@@ -474,9 +474,14 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
       result = await api.recordMatch(payload);
     }
     showMatchSummary(result);
+    const prevPlayers = [...participantsEl.querySelectorAll(".p-select")].map((s) => s.value);
     participantsEl.innerHTML = "";
-    addParticipantRow();
-    addParticipantRow();
+    const rowCount = Math.max(2, prevPlayers.length);
+    for (let i = 0; i < rowCount; i++) addParticipantRow();
+    prevPlayers.forEach((id, i) => {
+      const sel = participantsEl.children[i]?.querySelector(".p-select");
+      if (sel && id) sel.value = id;
+    });
     status.textContent = "";
   } catch (err) {
     setStatus(status, err.message, false);
