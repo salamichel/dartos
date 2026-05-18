@@ -36,6 +36,7 @@ const api = {
   deleteSeason: (id) => api.req(`/seasons/${id}`, { method: "DELETE" }),
   listMatches: (seasonId) => api.req("/matches" + (seasonId ? `?seasonId=${seasonId}` : "")),
   recordMatch: (payload) => api.req("/matches", { method: "POST", body: JSON.stringify(payload) }),
+  deleteMatch: (id) => api.req(`/matches/${id}`, { method: "DELETE" }),
   leaderboard: () => api.req(`/leaderboard`),
 };
 
@@ -558,11 +559,28 @@ async function refreshMatchesList() {
       card.innerHTML = `
         <header>
           <div><strong>Match #${m.id}</strong> <span class="muted" style="font-size:0.8rem">${when}</span></div>
-          <button class="muted small edit-match" data-id="${m.id}">Modifier</button>
+          <div style="display:flex;gap:0.4rem">
+            <button class="muted small edit-match" data-id="${m.id}" style="width:auto">✏️ Modifier</button>
+            <button class="small delete-match" data-id="${m.id}" style="background:transparent;color:var(--err);width:auto">🗑️</button>
+          </div>
         </header>
         <ul>${lis}</ul>
       `;
       card.querySelector(".edit-match").addEventListener("click", () => editMatch(m));
+      card.querySelector(".delete-match").addEventListener("click", async () => {
+        const ok = await showConfirm(`Supprimer le match #${m.id} du ${when} ? Cette action est irréversible.`);
+        if (!ok) return;
+        const btn = card.querySelector(".delete-match");
+        setLoading(btn, true);
+        try {
+          await api.deleteMatch(m.id);
+          showToast(`Match #${m.id} supprimé`, "ok");
+          await refreshMatchesList();
+        } catch (err) {
+          showToast(err.message, "err");
+          setLoading(btn, false);
+        }
+      });
       container.appendChild(card);
     }
   } finally {
