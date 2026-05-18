@@ -107,6 +107,18 @@ seasonsRouter.patch("/:id", requireAdminPassword, async (req, res) => {
 
   const updated = await prisma.season.update({ where: { id }, data: parsed.data });
 
+  // Fetch player levels for accurate TUEUR_DE_GEANTS calculation
+  const patchAllPlayerIds = [...new Set(season.matches.flatMap(m => m.participants.map(p => p.playerId)))];
+  const patchPlayers = await prisma.player.findMany({
+    where: { id: { in: patchAllPlayerIds } },
+    include: { participations: { select: { xpEarned: true } } },
+  });
+  const patchPlayerLevels = new Map<number, number>();
+  patchPlayers.forEach(p => {
+    const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
+    patchPlayerLevels.set(p.id, Math.max(0, totalXP));
+  });
+
   // Recalculate XP for all matches with the new rules
   await prisma.$transaction(async (tx) => {
     for (const match of season.matches) {
@@ -119,8 +131,8 @@ seasonsRouter.patch("/:id", requireAdminPassword, async (req, res) => {
       const newScores = calculateMatchResults(
         winnerPart.playerId,
         winnerPart.finishType as any,
-        losers.map((l) => ({ ...l, level: 0 })),
-        0,
+        losers.map((l) => ({ ...l, level: patchPlayerLevels.get(l.playerId) ?? 0 })),
+        patchPlayerLevels.get(winnerPart.playerId) ?? 0,
         {
           xpPerDefeatedOpponent: updated.xpPerDefeatedOpponent,
           xpBonusSimple: updated.xpBonusSimple,
@@ -171,6 +183,17 @@ seasonsRouter.post("/:id/recalculate", requireAdminPassword, async (req, res) =>
   });
   if (!season) return res.status(404).json({ error: "Season not found" });
 
+  const recalcAllPlayerIds = [...new Set(season.matches.flatMap(m => m.participants.map(p => p.playerId)))];
+  const recalcPlayers = await prisma.player.findMany({
+    where: { id: { in: recalcAllPlayerIds } },
+    include: { participations: { select: { xpEarned: true } } },
+  });
+  const recalcPlayerLevels = new Map<number, number>();
+  recalcPlayers.forEach(p => {
+    const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
+    recalcPlayerLevels.set(p.id, Math.max(0, totalXP));
+  });
+
   await prisma.$transaction(async (tx) => {
     for (const match of season.matches) {
       const winnerPart = match.participants.find((p) => p.rank === 1);
@@ -183,8 +206,8 @@ seasonsRouter.post("/:id/recalculate", requireAdminPassword, async (req, res) =>
       const newScores = calculateMatchResults(
         winnerPart.playerId,
         winnerPart.finishType as any,
-        losers.map((l) => ({ ...l, level: 0 })),
-        0,
+        losers.map((l) => ({ ...l, level: recalcPlayerLevels.get(l.playerId) ?? 0 })),
+        recalcPlayerLevels.get(winnerPart.playerId) ?? 0,
         {
           xpPerDefeatedOpponent: season.xpPerDefeatedOpponent,
           xpBonusSimple: season.xpBonusSimple,
