@@ -2,8 +2,58 @@ import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { createSeasonSchema, updateSeasonSchema } from "../schemas";
-import { calculateMatchResults } from "../scoring";
+import { calculateMatchResults, XPConfig } from "../scoring";
 import { requireAdminPassword } from "../middleware";
+
+type MatchWithParticipants = {
+  id: number;
+  participants: {
+    playerId: number;
+    rank: number;
+    scoreLeft: number | null;
+    finishType: string | null;
+  }[];
+};
+
+async function recalculateMatches(
+  tx: Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
+  matches: MatchWithParticipants[],
+  config: XPConfig
+) {
+  const allPlayerIds = [...new Set(matches.flatMap(m => m.participants.map(p => p.playerId)))];
+  const players = await tx.player.findMany({
+    where: { id: { in: allPlayerIds } },
+    include: { participations: { select: { xpEarned: true } } },
+  });
+  const playerLevels = new Map<number, number>();
+  players.forEach(p => {
+    const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
+    playerLevels.set(p.id, Math.max(0, totalXP));
+  });
+
+  for (const match of matches) {
+    const winnerPart = match.participants.find(p => p.rank === 1);
+    const losers = match.participants
+      .filter(p => p.rank > 1)
+      .map(p => ({ playerId: p.playerId, scoreLeft: p.scoreLeft ?? 0 }));
+    if (!winnerPart) continue;
+
+    const newScores = calculateMatchResults(
+      winnerPart.playerId,
+      winnerPart.finishType as any,
+      losers.map(l => ({ ...l, level: playerLevels.get(l.playerId) ?? 0 })),
+      playerLevels.get(winnerPart.playerId) ?? 0,
+      config
+    );
+
+    for (const ns of newScores) {
+      await tx.matchParticipant.update({
+        where: { matchId_playerId: { matchId: match.id, playerId: ns.playerId } },
+        data: { xpEarned: ns.xpEarned, medals: ns.medals },
+      });
+    }
+  }
+}
 
 export const seasonsRouter = Router();
 
@@ -107,53 +157,19 @@ seasonsRouter.patch("/:id", requireAdminPassword, async (req, res) => {
 
   const updated = await prisma.season.update({ where: { id }, data: parsed.data });
 
-  // Fetch player levels for accurate TUEUR_DE_GEANTS calculation
-  const patchAllPlayerIds = [...new Set(season.matches.flatMap(m => m.participants.map(p => p.playerId)))];
-  const patchPlayers = await prisma.player.findMany({
-    where: { id: { in: patchAllPlayerIds } },
-    include: { participations: { select: { xpEarned: true } } },
-  });
-  const patchPlayerLevels = new Map<number, number>();
-  patchPlayers.forEach(p => {
-    const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
-    patchPlayerLevels.set(p.id, Math.max(0, totalXP));
-  });
-
-  // Recalculate XP for all matches with the new rules
   await prisma.$transaction(async (tx) => {
-    for (const match of season.matches) {
-      const winnerPart = match.participants.find((p) => p.rank === 1);
-      const losers = match.participants
-        .filter((p) => p.rank > 1)
-        .map((p) => ({ playerId: p.playerId, scoreLeft: p.scoreLeft ?? 0 }));
-      if (!winnerPart) continue;
-
-      const newScores = calculateMatchResults(
-        winnerPart.playerId,
-        winnerPart.finishType as any,
-        losers.map((l) => ({ ...l, level: patchPlayerLevels.get(l.playerId) ?? 0 })),
-        patchPlayerLevels.get(winnerPart.playerId) ?? 0,
-        {
-          xpPerDefeatedOpponent: updated.xpPerDefeatedOpponent,
-          xpBonusSimple: updated.xpBonusSimple,
-          xpBonusDouble: updated.xpBonusDouble,
-          xpBonusTriple: updated.xpBonusTriple,
-          xpVampireMultiplier: updated.xpVampireMultiplier,
-          xpSurvivorBase: updated.xpSurvivorBase,
-          xpBonusPoulidor: updated.xpBonusPoulidor,
-          xpBonusJackpot: updated.xpBonusJackpot,
-          xpBonusEgalite: updated.xpBonusEgalite,
-          xpBonusTueurDeGeants: updated.xpBonusTueurDeGeants,
-        }
-      );
-
-      for (const ns of newScores) {
-        await tx.matchParticipant.update({
-          where: { matchId_playerId: { matchId: match.id, playerId: ns.playerId } },
-          data: { xpEarned: ns.xpEarned, medals: ns.medals },
-        });
-      }
-    }
+    await recalculateMatches(tx, season.matches, {
+      xpPerDefeatedOpponent: updated.xpPerDefeatedOpponent,
+      xpBonusSimple: updated.xpBonusSimple,
+      xpBonusDouble: updated.xpBonusDouble,
+      xpBonusTriple: updated.xpBonusTriple,
+      xpVampireMultiplier: updated.xpVampireMultiplier,
+      xpSurvivorBase: updated.xpSurvivorBase,
+      xpBonusPoulidor: updated.xpBonusPoulidor,
+      xpBonusJackpot: updated.xpBonusJackpot,
+      xpBonusEgalite: updated.xpBonusEgalite,
+      xpBonusTueurDeGeants: updated.xpBonusTueurDeGeants,
+    });
   });
 
   return res.json({ ...updated, matchesRecalculated: season.matches.length });
@@ -183,55 +199,19 @@ seasonsRouter.post("/:id/recalculate", requireAdminPassword, async (req, res) =>
   });
   if (!season) return res.status(404).json({ error: "Season not found" });
 
-  const recalcAllPlayerIds = [...new Set(season.matches.flatMap(m => m.participants.map(p => p.playerId)))];
-  const recalcPlayers = await prisma.player.findMany({
-    where: { id: { in: recalcAllPlayerIds } },
-    include: { participations: { select: { xpEarned: true } } },
-  });
-  const recalcPlayerLevels = new Map<number, number>();
-  recalcPlayers.forEach(p => {
-    const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
-    recalcPlayerLevels.set(p.id, Math.max(0, totalXP));
-  });
-
   await prisma.$transaction(async (tx) => {
-    for (const match of season.matches) {
-      const winnerPart = match.participants.find((p) => p.rank === 1);
-      const losers = match.participants
-        .filter((p) => p.rank > 1)
-        .map((p) => ({ playerId: p.playerId, scoreLeft: p.scoreLeft ?? 0 }));
-
-      if (!winnerPart) continue;
-
-      const newScores = calculateMatchResults(
-        winnerPart.playerId,
-        winnerPart.finishType as any,
-        losers.map((l) => ({ ...l, level: recalcPlayerLevels.get(l.playerId) ?? 0 })),
-        recalcPlayerLevels.get(winnerPart.playerId) ?? 0,
-        {
-          xpPerDefeatedOpponent: season.xpPerDefeatedOpponent,
-          xpBonusSimple: season.xpBonusSimple,
-          xpBonusDouble: season.xpBonusDouble,
-          xpBonusTriple: season.xpBonusTriple,
-          xpVampireMultiplier: season.xpVampireMultiplier,
-          xpSurvivorBase: season.xpSurvivorBase,
-          xpBonusPoulidor: season.xpBonusPoulidor,
-          xpBonusJackpot: season.xpBonusJackpot,
-          xpBonusEgalite: season.xpBonusEgalite,
-          xpBonusTueurDeGeants: season.xpBonusTueurDeGeants,
-        }
-      );
-
-      for (const ns of newScores) {
-        await tx.matchParticipant.update({
-          where: { matchId_playerId: { matchId: match.id, playerId: ns.playerId } },
-          data: { 
-            xpEarned: ns.xpEarned,
-            medals: ns.medals,
-          },
-        });
-      }
-    }
+    await recalculateMatches(tx, season.matches, {
+      xpPerDefeatedOpponent: season.xpPerDefeatedOpponent,
+      xpBonusSimple: season.xpBonusSimple,
+      xpBonusDouble: season.xpBonusDouble,
+      xpBonusTriple: season.xpBonusTriple,
+      xpVampireMultiplier: season.xpVampireMultiplier,
+      xpSurvivorBase: season.xpSurvivorBase,
+      xpBonusPoulidor: season.xpBonusPoulidor,
+      xpBonusJackpot: season.xpBonusJackpot,
+      xpBonusEgalite: season.xpBonusEgalite,
+      xpBonusTueurDeGeants: season.xpBonusTueurDeGeants,
+    });
   });
 
   res.json({ success: true, matchesProcessed: season.matches.length });
