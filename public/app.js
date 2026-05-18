@@ -268,10 +268,10 @@ const SEASON_DEFAULTS = {
   xpBonusTriple: 100,
   xpVampireMultiplier: 1,
   xpSurvivorBase: 20,
-  xpBonusPoulidor: 100,
-  xpBonusJackpot: 300,
-  xpBonusEgalite: 50,
-  xpBonusTueurDeGeants: 200,
+  xpBonusPoulidor: 15,
+  xpBonusJackpot: 20,
+  xpBonusEgalite: 10,
+  xpBonusTueurDeGeants: 50,
 };
 
 const SEASON_FIELD_MAP = {
@@ -553,7 +553,7 @@ async function refreshMatchesList() {
           const xp = `<span class="xp-gain plus">+${p.xpEarned} XP</span>`;
           const medalsMap = { POULIDOR: "🥈", JACKPOT: "🎰", EGALITE: "🤝", TUEUR_DE_GEANTS: "⚔️🏆" };
           const medalsHtml = (p.medals || []).map((m) => `<span class="medal-icon" title="${m}">${medalsMap[m] || m}</span>`).join("");
-          return `<li><strong>${p.rank === 1 ? "🏆" : p.rank + "."}</strong> ${escapeHtml(p.player.name)}<span class="muted" style="font-size:0.8rem">${detail}</span> — ${xp}${medalsHtml}</li>`;
+          return `<li><span class="match-li-left"><strong>${p.rank === 1 ? "🏆" : p.rank + "."}</strong> ${escapeHtml(p.player.name)}<span class="muted" style="font-size:0.8rem">${detail}</span></span><span class="match-li-right">${xp}${medalsHtml}</span></li>`;
         })
         .join("");
       card.innerHTML = `

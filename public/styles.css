@@ -274,6 +274,10 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
 .level-card { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.75rem; background: rgba(255,255,255,0.02); border-radius: 10px; }
 .level-range { font-size: 0.78rem; color: var(--muted); }
 
+/* --- Match card li layout --- */
+.match-li-left { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.match-li-right { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; margin-left: 0.5rem; }
+
 /* --- XP Colors --- */
 .xp-gain.plus { color: var(--ok) !important; font-weight: 700; }
 
@@ -307,6 +311,8 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
   #lb-table td:nth-child(2) { margin: 0; }
   #lb-table td:nth-child(3) { margin: 0; color: var(--text); font-size: 1rem; }
   #lb-table td:nth-child(4) { display: table-cell; }
+  #lb-table td:nth-child(5) { min-width: 160px; margin-top: 0; }
+  #lb-table td:nth-child(6) { position: static; white-space: nowrap; text-align: left; }
   .podium { height: 180px; gap: 1.5rem; }
   .participant-row {
     grid-template-areas: "rank name score remove";
