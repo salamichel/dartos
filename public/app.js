@@ -1,11 +1,29 @@
 // Vanilla JS frontend for the dartos API.
 
+// ----- Admin password -----
+let adminPassword = localStorage.getItem("adminPassword") || "";
+
+function updateLockBtn() {
+  const btn = document.getElementById("lock-btn");
+  btn.textContent = adminPassword ? "🔓" : "🔒";
+  btn.classList.toggle("unlocked", !!adminPassword);
+  btn.title = adminPassword ? "Mot de passe admin configuré (cliquer pour changer)" : "Configurer le mot de passe admin";
+}
+
+document.getElementById("lock-btn").addEventListener("click", () => {
+  const val = prompt("Mot de passe admin (vide pour effacer) :", adminPassword);
+  if (val === null) return;
+  adminPassword = val.trim();
+  if (adminPassword) localStorage.setItem("adminPassword", adminPassword);
+  else localStorage.removeItem("adminPassword");
+  updateLockBtn();
+});
+
 const api = {
   async req(path, opts = {}) {
-    const res = await fetch(path, {
-      headers: { "Content-Type": "application/json" },
-      ...opts,
-    });
+    const headers = { "Content-Type": "application/json" };
+    if (adminPassword) headers["X-Admin-Password"] = adminPassword;
+    const res = await fetch(path, { headers, ...opts });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body?.error?.formErrors?.join(", ") || body?.error?.fieldErrors?.participants?.join(", ") || body?.error || `HTTP ${res.status}`);
     return body;
@@ -14,6 +32,7 @@ const api = {
   createPlayer: (name) => api.req("/players", { method: "POST", body: JSON.stringify({ name }) }),
   listSeasons: () => api.req("/seasons"),
   createSeason: (payload) => api.req("/seasons", { method: "POST", body: JSON.stringify(payload) }),
+  updateSeason: (id, payload) => api.req(`/seasons/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteSeason: (id) => api.req(`/seasons/${id}`, { method: "DELETE" }),
   listMatches: (seasonId) => api.req("/matches" + (seasonId ? `?seasonId=${seasonId}` : "")),
   recordMatch: (payload) => api.req("/matches", { method: "POST", body: JSON.stringify(payload) }),
@@ -175,10 +194,22 @@ async function refreshSeasons() {
         <span style="font-weight:700">${escapeHtml(s.name)}</span>
         <span class="muted" style="font-size:0.78rem;display:block">Depuis le ${date}</span>
       </div>
-      <button class="delete-season small" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="background:transparent;color:var(--err);width:auto" title="Supprimer la saison">🗑️ Supprimer</button>
+      <div style="display:flex;gap:0.4rem">
+        <button class="edit-season small muted" data-id="${s.id}" style="width:auto">✏️ Modifier</button>
+        <button class="delete-season small" data-id="${s.id}" data-name="${escapeHtml(s.name)}" style="background:transparent;color:var(--err);width:auto">🗑️</button>
+      </div>
     `;
+    // Store full season data on the li for edit pre-fill
+    li.dataset.season = JSON.stringify(s);
     ul.appendChild(li);
   }
+
+  ul.querySelectorAll(".edit-season").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const s = JSON.parse(btn.closest("li").dataset.season);
+      editSeason(s);
+    });
+  });
 
   ul.querySelectorAll(".delete-season").forEach((btn) => {
     btn.addEventListener("click", async () => {
@@ -255,11 +286,39 @@ const SEASON_FIELD_MAP = {
   xpBonusTueurDeGeants: "s-xpTueur",
 };
 
+function editSeason(s) {
+  document.getElementById("s-editing-id").value = s.id;
+  document.getElementById("s-name").value = s.name;
+  document.getElementById("s-submit").textContent = "Mettre à jour";
+  document.getElementById("s-cancel").classList.remove("hidden");
+
+  for (const [key, id] of Object.entries(SEASON_FIELD_MAP)) {
+    const el = document.getElementById(id);
+    if (el && s[key] !== undefined) el.value = s[key];
+  }
+
+  document.getElementById("season-form").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function resetSeasonForm() {
+  document.getElementById("s-editing-id").value = "";
+  document.getElementById("s-name").value = "";
+  document.getElementById("s-submit").textContent = "Créer";
+  document.getElementById("s-cancel").classList.add("hidden");
+  for (const [key, id] of Object.entries(SEASON_FIELD_MAP)) {
+    const el = document.getElementById(id);
+    if (el) el.value = SEASON_DEFAULTS[key] ?? "";
+  }
+}
+
+document.getElementById("s-cancel").addEventListener("click", resetSeasonForm);
+
 document.getElementById("season-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const editingId = document.getElementById("s-editing-id").value;
   const name = document.getElementById("s-name").value.trim();
   const status = document.getElementById("s-status");
-  const btn = e.submitter || e.target.querySelector('[type="submit"]');
+  const btn = document.getElementById("s-submit");
   setLoading(btn, true);
 
   const payload = { name };
@@ -269,14 +328,17 @@ document.getElementById("season-form").addEventListener("submit", async (e) => {
   }
 
   try {
-    await api.req("/seasons", { method: "POST", body: JSON.stringify(payload) });
-    document.getElementById("s-name").value = "";
-    for (const [key, id] of Object.entries(SEASON_FIELD_MAP)) {
-      const el = document.getElementById(id);
-      if (el) el.value = SEASON_DEFAULTS[key] ?? "";
+    if (editingId) {
+      const res = await api.updateSeason(editingId, payload);
+      setStatus(status, `Mise à jour ✓ (${res.matchesRecalculated} matchs recalculés)`, true);
+      showToast(`Saison mise à jour · ${res.matchesRecalculated} matchs recalculés ✓`, "ok");
+      resetSeasonForm();
+    } else {
+      await api.createSeason(payload);
+      setStatus(status, "Créée ✓", true);
+      showToast("Saison créée ✓", "ok");
+      resetSeasonForm();
     }
-    setStatus(status, "Créée ✓", true);
-    showToast("Saison créée ✓", "ok");
     await refreshSeasons();
   } catch (err) {
     setStatus(status, err.message, false);
@@ -683,6 +745,7 @@ function escapeHtml(s) {
 
 // ----- Boot -----
 (async function init() {
+  updateLockBtn();
   await refreshPlayers();
   await refreshSeasons();
   addParticipantRow();

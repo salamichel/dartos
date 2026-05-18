@@ -25,7 +25,11 @@ header {
   z-index: 100;
   text-align: center;
 }
-header h1 { margin: 0 0 0.6rem 0; font-size: 1.1rem; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; }
+.header-top { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 0.6rem; position: relative; }
+header h1 { margin: 0; font-size: 1.1rem; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; }
+.lock-btn { position: absolute; right: 0; width: auto; padding: 0.25rem 0.5rem; background: transparent; color: var(--muted); font-size: 1rem; border-radius: 8px; border: 1px solid transparent; }
+.lock-btn:hover { border-color: var(--border); color: var(--text); }
+.lock-btn.unlocked { color: var(--ok); }
 nav { display: flex; overflow-x: auto; gap: 0.5rem; justify-content: flex-start; padding-bottom: 3px; -webkit-overflow-scrolling: touch; }
 nav::-webkit-scrollbar { display: none; }
 
