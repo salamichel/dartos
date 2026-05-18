@@ -351,6 +351,54 @@ document.getElementById("season-form").addEventListener("submit", async (e) => {
 // ----- Match form -----
 const participantsEl = document.getElementById("m-participants");
 
+function addNewPlayerInline(btn, selectEl) {
+  const wrap = btn.closest(".p-select-wrap");
+  btn.classList.add("hidden");
+
+  const form = document.createElement("div");
+  form.className = "inline-new-player";
+  form.innerHTML = `
+    <input type="text" class="inline-p-name" placeholder="Nom du joueur" maxlength="64" />
+    <button type="button" class="inline-p-ok" title="Créer">✓</button>
+    <button type="button" class="inline-p-cancel" title="Annuler">✗</button>
+  `;
+  wrap.appendChild(form);
+
+  const nameInput = form.querySelector(".inline-p-name");
+  const okBtn = form.querySelector(".inline-p-ok");
+  const cancelBtn = form.querySelector(".inline-p-cancel");
+  nameInput.focus();
+
+  async function create() {
+    const name = nameInput.value.trim();
+    if (!name) return;
+    setLoading(okBtn, true);
+    try {
+      const player = await api.createPlayer(name);
+      await refreshPlayers();
+      selectEl.value = player.id;
+      form.remove();
+      btn.classList.remove("hidden");
+      showToast(`Joueur "${escapeHtml(name)}" créé ✓`, "ok");
+    } catch (err) {
+      showToast(err.message, "err");
+      setLoading(okBtn, false);
+    }
+  }
+
+  function cancel() {
+    form.remove();
+    btn.classList.remove("hidden");
+  }
+
+  okBtn.addEventListener("click", create);
+  cancelBtn.addEventListener("click", cancel);
+  nameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); create(); }
+    if (e.key === "Escape") cancel();
+  });
+}
+
 function addParticipantRow() {
   const row = document.createElement("div");
   const i = participantsEl.children.length;
@@ -359,7 +407,10 @@ function addParticipantRow() {
   if (i === 0) {
     row.innerHTML = `
       <div class="rank">🏆</div>
-      <select class="p-select" required></select>
+      <div class="p-select-wrap">
+        <select class="p-select" required></select>
+        <button type="button" class="new-player-btn">➕ Nouveau joueur</button>
+      </div>
       <select class="p-finish" title="Finition">
         <option value="SIMPLE">Finition SIMPLE</option>
         <option value="DOUBLE">Finition DOUBLE ✖️2</option>
@@ -370,7 +421,10 @@ function addParticipantRow() {
   } else {
     row.innerHTML = `
       <div class="rank">💀</div>
-      <select class="p-select" required></select>
+      <div class="p-select-wrap">
+        <select class="p-select" required></select>
+        <button type="button" class="new-player-btn">➕ Nouveau joueur</button>
+      </div>
       <input type="number" class="p-score" placeholder="Score restant" min="1" max="301" required />
       <button type="button" class="remove" title="Supprimer">×</button>
     `;
@@ -379,6 +433,12 @@ function addParticipantRow() {
       refreshRanks();
     });
   }
+
+  const sel = row.querySelector(".p-select");
+  row.querySelector(".new-player-btn").addEventListener("click", (e) => {
+    e.preventDefault();
+    addNewPlayerInline(e.currentTarget, sel);
+  });
 
   participantsEl.appendChild(row);
   refreshParticipantOptions();
