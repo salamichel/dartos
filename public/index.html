@@ -10,11 +10,11 @@
   <header>
     <h1>dartos</h1>
     <nav>
-      <button data-tab="leaderboard" class="active">Classement</button>
-      <button data-tab="match">Saisir</button>
-      <button data-tab="matches">Matchs</button>
-      <button data-tab="players">Joueurs</button>
-      <button data-tab="seasons">Saisons</button>
+      <button data-tab="leaderboard" class="active">🏆 Classement</button>
+      <button data-tab="match">⚔️ Saisir</button>
+      <button data-tab="matches">📜 Matchs</button>
+      <button data-tab="players">👤 Joueurs</button>
+      <button data-tab="seasons">🏟️ Saisons</button>
     </nav>
   </header>
 
@@ -195,6 +195,16 @@
     </div>
   </div>
 
+  <div id="toast-container"></div>
+  <div id="confirm-overlay" class="hidden">
+    <div id="confirm-box">
+      <p id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button id="confirm-cancel" class="muted">Annuler</button>
+        <button id="confirm-ok">Confirmer</button>
+      </div>
+    </div>
+  </div>
   <script src="/app.js"></script>
 </body>
 </html>
