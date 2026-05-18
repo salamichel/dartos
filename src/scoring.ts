@@ -21,6 +21,9 @@ export interface XPConfig {
   xpBonusJackpot: number;
   xpBonusEgalite: number;
   xpBonusTueurDeGeants: number;
+  xpBonusPhenix: number;
+  xpBonusSerialWinner: number;
+  xpBonusBenjamin: number;
 }
 
 /**
@@ -33,7 +36,8 @@ export function calculateMatchResults(
   winnerLevel: number,
   config: XPConfig,
   winnerXPBefore: number = 0,
-  loserXPBefore: Map<number, number> = new Map()
+  loserXPBefore: Map<number, number> = new Map(),
+  winnerConsecutiveWinsBefore: number = 0
 ): MatchParticipantResult[] {
   const sortedLosers = [...losers].sort((a, b) => a.scoreLeft - b.scoreLeft);
   const nAdversaries = losers.length;
@@ -51,6 +55,21 @@ export function calculateMatchResults(
   if (losers.some(l => l.level > winnerLevel)) {
     winnerXP += config.xpBonusTueurDeGeants;
     winnerMedals.push("TUEUR_DE_GEANTS");
+  }
+
+  // Phenix: Winner had the strictly lowest XP among all participants
+  if (config.xpBonusPhenix > 0 && losers.length > 0) {
+    const minLoserXP = Math.min(...losers.map(l => loserXPBefore.get(l.playerId) ?? 0));
+    if (winnerXPBefore < minLoserXP) {
+      winnerXP += config.xpBonusPhenix;
+      winnerMedals.push("PHENIX");
+    }
+  }
+
+  // Serial Winner: 3rd consecutive win or more in this season
+  if (config.xpBonusSerialWinner > 0 && winnerConsecutiveWinsBefore >= 2) {
+    winnerXP += config.xpBonusSerialWinner;
+    winnerMedals.push("SERIAL_WINNER");
   }
 
   const results: MatchParticipantResult[] = [];
@@ -89,6 +108,17 @@ export function calculateMatchResults(
     if (scoreCounts.get(loser.scoreLeft)! > 1) {
       xp += config.xpBonusEgalite;
       medals.push("EGALITE");
+    }
+
+    // Benjamin: last-ranked loser (with 3+ losers) finishing close (< 50)
+    if (
+      config.xpBonusBenjamin > 0 &&
+      sortedLosers.length >= 3 &&
+      rank === sortedLosers.length + 1 &&
+      loser.scoreLeft < 50
+    ) {
+      xp += config.xpBonusBenjamin;
+      medals.push("BENJAMIN");
     }
 
     results.push({

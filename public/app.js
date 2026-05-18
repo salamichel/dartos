@@ -44,6 +44,32 @@ const api = {
 let players = [];
 let seasons = [];
 
+const MEDALS_MAP = {
+  POULIDOR: "🥈",
+  JACKPOT: "🎰",
+  EGALITE: "🤝",
+  TUEUR_DE_GEANTS: "⚔️🏆",
+  PHENIX: "🔥",
+  SERIAL_WINNER: "🔥🔥",
+  BENJAMIN: "🥉",
+};
+
+function daysUntil(endedAt) {
+  if (!endedAt) return null;
+  const end = new Date(endedAt).getTime();
+  const now = Date.now();
+  return Math.ceil((end - now) / 86400000);
+}
+
+function seasonEndLabel(s) {
+  if (!s.endedAt) return "Saison en cours (sans date de fin)";
+  const d = daysUntil(s.endedAt);
+  if (d > 0) return `Se termine dans ${d} jour${d > 1 ? "s" : ""}`;
+  if (d === 0) return "Se termine aujourd'hui";
+  const past = -d;
+  return `Saison terminée depuis ${past} jour${past > 1 ? "s" : ""}`;
+}
+
 const LEVELS = [
   { title: "Pousse-Caillou", minXP: 0 },
   { title: "Lanceur du Dimanche", minXP: 500 },
@@ -132,10 +158,17 @@ async function refreshPlayers() {
 
   for (const p of players) {
     const li = document.createElement("li");
+    const badgesEntries = Object.entries(p.badges || {});
+    const badgesHtml = badgesEntries.length
+      ? `<span class="player-badges">${badgesEntries
+          .map(([name, count]) => `<span class="medal-icon" title="${name}">${MEDALS_MAP[name] || name}${count > 1 ? `×${count}` : ""}</span>`)
+          .join("")}</span>`
+      : "";
     li.innerHTML = `
       <div class="player-info">
         <strong>${escapeHtml(p.name)}</strong>
         <span class="muted">${p.matchCount} match${p.matchCount !== 1 ? "s" : ""} · ${p.totalXP} XP</span>
+        ${badgesHtml}
       </div>
       <button class="muted small edit-player" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Modifier</button>
     `;
@@ -191,10 +224,12 @@ async function refreshSeasons() {
   for (const s of seasons) {
     const li = document.createElement("li");
     const date = new Date(s.startedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    const endLabel = seasonEndLabel(s);
     li.innerHTML = `
       <div>
         <span style="font-weight:700">${escapeHtml(s.name)}</span>
         <span class="muted" style="font-size:0.78rem;display:block">Depuis le ${date}</span>
+        <span class="muted" style="font-size:0.78rem;display:block">${endLabel}</span>
       </div>
       <div style="display:flex;gap:0.4rem">
         <button class="edit-season small muted" data-id="${s.id}" style="width:auto">✏️ Modifier</button>
@@ -260,6 +295,16 @@ function updateRuleDisplay(seasonId) {
   document.getElementById("rule-xpJackpot").textContent = season.xpBonusJackpot;
   document.getElementById("rule-xpEgalite").textContent = season.xpBonusEgalite;
   document.getElementById("rule-xpTueur").textContent = season.xpBonusTueurDeGeants;
+
+  const phenixEl = document.getElementById("rule-xpPhenix");
+  if (phenixEl) phenixEl.textContent = season.xpBonusPhenix;
+  const serialEl = document.getElementById("rule-xpSerialWinner");
+  if (serialEl) serialEl.textContent = season.xpBonusSerialWinner;
+  const benjaminEl = document.getElementById("rule-xpBenjamin");
+  if (benjaminEl) benjaminEl.textContent = season.xpBonusBenjamin;
+
+  const endEl = document.getElementById("lb-season-end");
+  if (endEl) endEl.textContent = seasonEndLabel(season);
 }
 
 const SEASON_DEFAULTS = {
@@ -273,6 +318,9 @@ const SEASON_DEFAULTS = {
   xpBonusJackpot: 20,
   xpBonusEgalite: 10,
   xpBonusTueurDeGeants: 50,
+  xpBonusPhenix: 0,
+  xpBonusSerialWinner: 0,
+  xpBonusBenjamin: 0,
 };
 
 const SEASON_FIELD_MAP = {
@@ -286,6 +334,9 @@ const SEASON_FIELD_MAP = {
   xpBonusJackpot: "s-xpJackpot",
   xpBonusEgalite: "s-xpEgalite",
   xpBonusTueurDeGeants: "s-xpTueur",
+  xpBonusPhenix: "s-xpPhenix",
+  xpBonusSerialWinner: "s-xpSerialWinner",
+  xpBonusBenjamin: "s-xpBenjamin",
 };
 
 function editSeason(s) {
@@ -561,17 +612,10 @@ function showMatchSummary(match) {
 
   document.getElementById("modal-winner-name").textContent = winner.player.name;
 
-  const medalsMap = {
-    POULIDOR: "🥈",
-    JACKPOT: "🎰",
-    EGALITE: "🤝",
-    TUEUR_DE_GEANTS: "⚔️🏆",
-  };
-
   sorted.forEach((p) => {
     const row = document.createElement("div");
     row.className = "modal-row" + (p.rank === 1 ? " winner" : "");
-    const medalsHtml = (p.medals || []).map((m) => `<span>${medalsMap[m] || m}</span>`).join(" ");
+    const medalsHtml = (p.medals || []).map((m) => `<span>${MEDALS_MAP[m] || m}</span>`).join(" ");
     row.innerHTML = `
       <div class="modal-player">
         <span class="name">${escapeHtml(p.player.name)}</span>
@@ -617,8 +661,7 @@ async function refreshMatchesList() {
         .map((p) => {
           const detail = p.rank === 1 ? ` · Finition ${p.finishType}` : ` · Reste ${p.scoreLeft} pts`;
           const xp = `<span class="xp-gain plus">+${p.xpEarned} XP</span>`;
-          const medalsMap = { POULIDOR: "🥈", JACKPOT: "🎰", EGALITE: "🤝", TUEUR_DE_GEANTS: "⚔️🏆" };
-          const medalsHtml = (p.medals || []).map((m) => `<span class="medal-icon" title="${m}">${medalsMap[m] || m}</span>`).join("");
+          const medalsHtml = (p.medals || []).map((m) => `<span class="medal-icon" title="${m}">${MEDALS_MAP[m] || m}</span>`).join("");
           return `<li><span class="match-li-left"><strong>${p.rank === 1 ? "🏆" : p.rank + "."}</strong> ${escapeHtml(p.player.name)}<span class="muted" style="font-size:0.8rem">${detail}</span></span><span class="match-li-right">${xp}${medalsHtml}</span></li>`;
         })
         .join("");

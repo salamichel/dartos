@@ -22,22 +22,29 @@ playersRouter.post("/", async (req, res) => {
 });
 
 playersRouter.get("/", async (_req, res) => {
-  const players = await prisma.player.findMany({ 
+  const players = await prisma.player.findMany({
     include: {
       participations: {
-        select: { xpEarned: true }
+        select: { xpEarned: true, medals: true }
       }
     },
-    orderBy: { createdAt: "asc" } 
+    orderBy: { createdAt: "asc" }
   });
-  
+
   const playersWithStats = players.map(p => {
     const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
+    const badges: Record<string, number> = {};
+    for (const part of p.participations) {
+      for (const m of part.medals) {
+        badges[m] = (badges[m] ?? 0) + 1;
+      }
+    }
     return {
       id: p.id,
       name: p.name,
       matchCount: p.participations.length,
-      totalXP: Math.max(0, totalXP)
+      totalXP: Math.max(0, totalXP),
+      badges,
     };
   });
 

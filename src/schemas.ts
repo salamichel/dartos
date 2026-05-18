@@ -50,6 +50,9 @@ const seasonRulesSchema = z.object({
   xpBonusJackpot: z.number().int().min(0).optional(),
   xpBonusEgalite: z.number().int().min(0).optional(),
   xpBonusTueurDeGeants: z.number().int().min(0).optional(),
+  xpBonusPhenix: z.number().int().min(0).optional(),
+  xpBonusSerialWinner: z.number().int().min(0).optional(),
+  xpBonusBenjamin: z.number().int().min(0).optional(),
 });
 
 export const createSeasonSchema = seasonRulesSchema.extend({
