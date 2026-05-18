@@ -72,8 +72,6 @@ Returns the global leaderboard with RPG-style progression.
    - Zone Vampire: +1 XP per remaining point on the board (sum of losers' `scoreLeft`).
 2. **Survivors** (all losers): +20 XP.
 
-*Note: The "Cul Rouge" tax has been removed. Rules are now configurable per season.*
-
 **Levels:**
 - Lvl 1: Pousse-Caillou (0 - 499 XP)
 - Lvl 2: Lanceur du Dimanche (500 - 1999 XP)
