@@ -62,12 +62,29 @@ function daysUntil(endedAt) {
 }
 
 function seasonEndLabel(s) {
-  if (!s.endedAt) return "Saison en cours (sans date de fin)";
-  const d = daysUntil(s.endedAt);
-  if (d > 0) return `Se termine dans ${d} jour${d > 1 ? "s" : ""}`;
-  if (d === 0) return "Se termine aujourd'hui";
-  const past = -d;
-  return `Saison terminée depuis ${past} jour${past > 1 ? "s" : ""}`;
+  if (!s.endedAt) return "⏱️ Saison en cours (sans date de fin)";
+  const end = new Date(s.endedAt).getTime();
+  const now = Date.now();
+  const ms = end - now;
+
+  if (ms < 0) {
+    const past = Math.ceil(-ms / 86400000);
+    return `✅ Saison terminée il y a ${past} jour${past > 1 ? "s" : ""}`;
+  }
+
+  const days = Math.floor(ms / 86400000);
+  const hours = Math.floor((ms % 86400000) / 3600000);
+  const mins = Math.floor((ms % 3600000) / 60000);
+
+  if (days > 0) {
+    return `⏳ Se termine dans ${days}j ${hours}h`;
+  } else if (hours > 0) {
+    return `⏳ Se termine dans ${hours}h ${mins}min`;
+  } else if (mins > 0) {
+    return `⏳ Se termine dans ${mins} minutes`;
+  } else {
+    return "🔔 Se termine dans moins d'une minute !";
+  }
 }
 
 const LEVELS = [
@@ -859,6 +876,17 @@ document.getElementById("lb-season").addEventListener("change", () => {
   refreshLeaderboard();
   updateRuleDisplay(document.getElementById("lb-season").value);
 });
+
+setInterval(() => {
+  const seasonId = document.getElementById("lb-season").value;
+  if (seasonId) {
+    const season = seasons.find((s) => s.id == seasonId) || seasons[0];
+    if (season) {
+      const endEl = document.getElementById("lb-season-end");
+      if (endEl) endEl.textContent = seasonEndLabel(season);
+    }
+  }
+}, 30000);
 
 document.getElementById("lb-recalculate").addEventListener("click", async () => {
   const seasonId = document.getElementById("lb-season").value;
