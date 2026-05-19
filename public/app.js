@@ -341,9 +341,9 @@ const SEASON_DEFAULTS = {
   xpBonusJackpot: 20,
   xpBonusEgalite: 10,
   xpBonusTueurDeGeants: 50,
-  xpBonusPhenix: 0,
-  xpBonusSerialWinner: 0,
-  xpBonusBenjamin: 0,
+  xpBonusPhenix: 30,
+  xpBonusSerialWinner: 40,
+  xpBonusBenjamin: 15,
   bonusVainqueurParRang: false,
 };
 
