@@ -54,6 +54,8 @@ const seasonRulesSchema = z.object({
   xpBonusSerialWinner: z.number().int().min(0).optional(),
   xpBonusBenjamin: z.number().int().min(0).optional(),
   bonusVainqueurParRang: z.boolean().optional(),
+  startedAt: z.coerce.date().optional(),
+  endedAt: z.coerce.date().nullable().optional(),
 });
 
 export const createSeasonSchema = seasonRulesSchema.extend({

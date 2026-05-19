@@ -291,17 +291,20 @@ function updateRuleDisplay(seasonId) {
   document.getElementById("rule-xpVampire").textContent = season.xpVampireMultiplier;
   document.getElementById("rule-xpSurvivor").textContent = season.xpSurvivorBase;
 
-  document.getElementById("rule-xpPoulidor").textContent = season.xpBonusPoulidor;
-  document.getElementById("rule-xpJackpot").textContent = season.xpBonusJackpot;
-  document.getElementById("rule-xpEgalite").textContent = season.xpBonusEgalite;
-  document.getElementById("rule-xpTueur").textContent = season.xpBonusTueurDeGeants;
-
-  const phenixEl = document.getElementById("rule-xpPhenix");
-  if (phenixEl) phenixEl.textContent = season.xpBonusPhenix;
-  const serialEl = document.getElementById("rule-xpSerialWinner");
-  if (serialEl) serialEl.textContent = season.xpBonusSerialWinner;
-  const benjaminEl = document.getElementById("rule-xpBenjamin");
-  if (benjaminEl) benjaminEl.textContent = season.xpBonusBenjamin;
+  const setBadge = (spanId, value) => {
+    const el = document.getElementById(spanId);
+    if (!el) return;
+    el.textContent = value;
+    const li = el.closest("li");
+    if (li) li.style.display = value > 0 ? "" : "none";
+  };
+  setBadge("rule-xpPoulidor", season.xpBonusPoulidor);
+  setBadge("rule-xpJackpot", season.xpBonusJackpot);
+  setBadge("rule-xpEgalite", season.xpBonusEgalite);
+  setBadge("rule-xpTueur", season.xpBonusTueurDeGeants);
+  setBadge("rule-xpPhenix", season.xpBonusPhenix);
+  setBadge("rule-xpSerialWinner", season.xpBonusSerialWinner);
+  setBadge("rule-xpBenjamin", season.xpBonusBenjamin);
 
   const endEl = document.getElementById("lb-season-end");
   if (endEl) endEl.textContent = seasonEndLabel(season);
@@ -355,6 +358,10 @@ function editSeason(s) {
   }
   const cbRang = document.getElementById("s-bonusVainqueurParRang");
   if (cbRang) cbRang.checked = !!s.bonusVainqueurParRang;
+  const startedAtEl = document.getElementById("s-startedAt");
+  if (startedAtEl) startedAtEl.value = s.startedAt ? new Date(s.startedAt).toISOString().slice(0, 10) : "";
+  const endedAtEl = document.getElementById("s-endedAt");
+  if (endedAtEl) endedAtEl.value = s.endedAt ? new Date(s.endedAt).toISOString().slice(0, 10) : "";
 
   document.getElementById("season-form").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -370,6 +377,10 @@ function resetSeasonForm() {
   }
   const cbRang = document.getElementById("s-bonusVainqueurParRang");
   if (cbRang) cbRang.checked = false;
+  const startedAtEl = document.getElementById("s-startedAt");
+  if (startedAtEl) startedAtEl.value = "";
+  const endedAtEl = document.getElementById("s-endedAt");
+  if (endedAtEl) endedAtEl.value = "";
 }
 
 document.getElementById("s-cancel").addEventListener("click", resetSeasonForm);
@@ -389,6 +400,10 @@ document.getElementById("season-form").addEventListener("submit", async (e) => {
   }
   const cbRang = document.getElementById("s-bonusVainqueurParRang");
   if (cbRang) payload.bonusVainqueurParRang = cbRang.checked;
+  const startedAtEl = document.getElementById("s-startedAt");
+  if (startedAtEl && startedAtEl.value) payload.startedAt = new Date(startedAtEl.value).toISOString();
+  const endedAtEl = document.getElementById("s-endedAt");
+  if (endedAtEl) payload.endedAt = endedAtEl.value ? new Date(endedAtEl.value).toISOString() : null;
 
   try {
     if (editingId) {
