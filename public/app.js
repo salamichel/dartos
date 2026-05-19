@@ -135,7 +135,7 @@ async function refreshPlayers() {
     li.innerHTML = `
       <div class="player-info">
         <strong>${escapeHtml(p.name)}</strong>
-        <span class="muted">${p.matchCount} match${p.matchCount !== 1 ? "s" : ""} · ${p.totalXP} XP</span>
+        <span class="muted">${p.totalXP} XP</span>
       </div>
       <button class="muted small edit-player" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Modifier</button>
     `;
@@ -740,7 +740,7 @@ async function refreshLeaderboard() {
         <td><strong>${escapeHtml(r.name)}</strong></td>
         <td>
           <div class="lb-stats">
-            <span>${r.matchCount} match${r.matchCount !== 1 ? "s" : ""}</span>
+            <span class="hidden">${r.matchCount} match${r.matchCount !== 1 ? "s" : ""}</span>
             <span class="lb-xp-total">${r.totalXP} XP</span>
           </div>
         </td>

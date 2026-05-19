@@ -316,7 +316,8 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
   #lb-table td { display: table-cell; padding: 0.9rem 1rem; position: static; border-bottom: 1px solid var(--border); vertical-align: middle; }
   #lb-table td:nth-child(1) { font-size: 1rem; font-weight: 700; color: var(--text); position: static; }
   #lb-table td:nth-child(2) { margin: 0; }
-  #lb-table td:nth-child(3) { margin: 0; color: var(--text); font-size: 1rem; }
+  #lb-table th:nth-child(3),
+  #lb-table td:nth-child(3) { display: none; }
   #lb-table td:nth-child(4) { display: table-cell; }
   #lb-table td:nth-child(5) { min-width: 160px; margin-top: 0; }
   #lb-table td:nth-child(6) { position: static; white-space: nowrap; text-align: left; }
