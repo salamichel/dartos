@@ -39,6 +39,22 @@ export const createPlayerSchema = z.object({
   name: z.string().trim().min(1).max(64),
 });
 
+export const createGuildSchema = z.object({
+  name: z.string().trim().min(1).max(64),
+  badgeIcon: z.string().trim().min(1).max(8),
+  badgeColor: z.string().trim().min(1).max(32),
+});
+
+export const updateGuildSchema = z.object({
+  name: z.string().trim().min(1).max(64).optional(),
+  badgeIcon: z.string().trim().min(1).max(8).optional(),
+  badgeColor: z.string().trim().min(1).max(32).optional(),
+});
+
+export const addGuildMemberSchema = z.object({
+  playerId: z.number().int().positive(),
+});
+
 const seasonRulesSchema = z.object({
   xpPerDefeatedOpponent: z.number().int().min(0).optional(),
   xpBonusSimple: z.number().int().min(0).optional(),

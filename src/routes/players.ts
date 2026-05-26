@@ -2,6 +2,8 @@ import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { createPlayerSchema } from "../schemas";
+import { getLevel } from "../scoring";
+
 
 export const playersRouter = Router();
 
@@ -25,7 +27,12 @@ playersRouter.get("/", async (_req, res) => {
   const players = await prisma.player.findMany({ 
     include: {
       participations: {
-        select: { xpEarned: true }
+        select: { xpEarned: true, medals: true }
+      },
+      guilds: {
+        include: {
+          guild: true
+        }
       }
     },
     orderBy: { createdAt: "asc" } 
@@ -33,16 +40,31 @@ playersRouter.get("/", async (_req, res) => {
   
   const playersWithStats = players.map(p => {
     const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
+    const clampedXP = Math.max(0, totalXP);
+    const totalBadgesCount = p.participations.reduce((sum, part) => sum + part.medals.length, 0);
+    const uniqueMedals = Array.from(new Set(p.participations.flatMap(part => part.medals)));
+    const levelInfo = getLevel(clampedXP);
+
     return {
       id: p.id,
       name: p.name,
       matchCount: p.participations.length,
-      totalXP: Math.max(0, totalXP)
+      totalXP: clampedXP,
+      totalBadgesCount,
+      uniqueMedals,
+      level: levelInfo.title,
+      guilds: p.guilds.map(pg => ({
+        id: pg.guild.id,
+        name: pg.guild.name,
+        badgeIcon: pg.guild.badgeIcon,
+        badgeColor: pg.guild.badgeColor
+      }))
     };
   });
 
   res.json(playersWithStats);
 });
+
 
 playersRouter.patch("/:id", async (req, res) => {
   const id = Number(req.params.id);

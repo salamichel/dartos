@@ -2,7 +2,8 @@
 
 // ----- Admin password -----
 let adminPassword = localStorage.getItem("adminPassword") || "";
-const SPLASH_KEY = "splashSeen";
+const SPLASH_VERSION = "2.0";
+const SPLASH_KEY = "splashSeenVersion";
 
 function updateLockBtn() {
   const btn = document.getElementById("lock-btn");
@@ -39,6 +40,12 @@ const api = {
   recordMatch: (payload) => api.req("/matches", { method: "POST", body: JSON.stringify(payload) }),
   deleteMatch: (id) => api.req(`/matches/${id}`, { method: "DELETE" }),
   leaderboard: () => api.req(`/leaderboard`),
+  listGuilds: () => api.req("/guilds"),
+  createGuild: (payload) => api.req("/guilds", { method: "POST", body: JSON.stringify(payload) }),
+  updateGuild: (id, payload) => api.req(`/guilds/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  deleteGuild: (id) => api.req(`/guilds/${id}`, { method: "DELETE" }),
+  joinGuild: (guildId, playerId) => api.req(`/guilds/${guildId}/members`, { method: "POST", body: JSON.stringify({ playerId: Number(playerId) }) }),
+  leaveGuild: (guildId, playerId) => api.req(`/guilds/${guildId}/members/${playerId}`, { method: "DELETE" }),
 };
 
 let players = [];
@@ -735,9 +742,19 @@ async function refreshLeaderboard() {
 
       const levelSlug = r.level.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
       const tr = document.createElement("tr");
+      
+      const guildBadgesHtml = (r.guilds || []).map(g => `
+        <span class="player-mini-guild-badge" style="background-color: ${g.badgeColor}" title="${escapeHtml(g.name)}">${escapeHtml(g.badgeIcon)}</span>
+      `).join("");
+
       tr.innerHTML = `
         <td>${i + 1}</td>
-        <td><strong>${escapeHtml(r.name)}</strong></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">
+            <strong>${escapeHtml(r.name)}</strong>
+            ${guildBadgesHtml}
+          </div>
+        </td>
         <td>
           <div class="lb-stats">
             <span class="hidden">${r.matchCount} match${r.matchCount !== 1 ? "s" : ""}</span>
@@ -820,11 +837,259 @@ function onTabShow(tab) {
   } else if (tab === "match" && participantsEl.children.length === 0) {
     addParticipantRow();
     addParticipantRow();
+  } else if (tab === "guilds") {
+    refreshGuilds();
   }
 }
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+// ----- Guildes -----
+const gBadgeIconInput = document.getElementById("g-badgeIcon");
+const gBadgeColorInput = document.getElementById("g-badgeColor");
+const gPreview = document.getElementById("guild-badge-preview");
+
+if (gBadgeIconInput && gBadgeColorInput && gPreview) {
+  const updatePreview = () => {
+    gPreview.textContent = gBadgeIconInput.value || "🛡️";
+    gPreview.style.backgroundColor = gBadgeColorInput.value || "#3dc7ff";
+    gPreview.style.boxShadow = `0 0 15px ${gBadgeColorInput.value || "#3dc7ff"}60`;
+  };
+  gBadgeIconInput.addEventListener("input", updatePreview);
+  gBadgeColorInput.addEventListener("input", updatePreview);
+  updatePreview();
+}
+
+function resetGuildForm() {
+  document.getElementById("g-editing-id").value = "";
+  document.getElementById("g-name").value = "";
+  document.getElementById("g-badgeIcon").value = "🛡️";
+  document.getElementById("g-badgeColor").value = "#3dc7ff";
+  document.getElementById("g-submit").textContent = "Créer la Guilde";
+  document.getElementById("g-cancel").classList.add("hidden");
+  if (gPreview) {
+    gPreview.textContent = "🛡️";
+    gPreview.style.backgroundColor = "#3dc7ff";
+    gPreview.style.boxShadow = "none";
+  }
+}
+
+const gCancelBtn = document.getElementById("g-cancel");
+if (gCancelBtn) {
+  gCancelBtn.addEventListener("click", resetGuildForm);
+}
+
+const guildForm = document.getElementById("guild-form");
+if (guildForm) {
+  guildForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const idVal = document.getElementById("g-editing-id").value;
+    const name = document.getElementById("g-name").value.trim();
+    const badgeIcon = document.getElementById("g-badgeIcon").value.trim();
+    const badgeColor = document.getElementById("g-badgeColor").value.trim();
+    const status = document.getElementById("g-status");
+    const btn = document.getElementById("g-submit");
+
+    setLoading(btn, true);
+    try {
+      if (idVal) {
+        if (!adminPassword) {
+          const hasAdmin = await ensureAdminPassword();
+          if (!hasAdmin) return;
+        }
+        await api.updateGuild(idVal, { name, badgeIcon, badgeColor });
+        showToast("Guilde modifiée ✓", "ok");
+      } else {
+        await api.createGuild({ name, badgeIcon, badgeColor });
+        showToast("Guilde créée ✓", "ok");
+      }
+      resetGuildForm();
+      await refreshGuilds();
+    } catch (err) {
+      setStatus(status, err.message, false);
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+}
+
+async function refreshGuilds() {
+  const container = document.getElementById("guilds-container");
+  if (!container) return;
+
+  try {
+    const guilds = await api.listGuilds();
+    players = await api.listPlayers();
+
+    container.innerHTML = "";
+    if (guilds.length === 0) {
+      container.innerHTML = `<div class="empty-state" style="grid-column: 1/-1; text-align: center; color: var(--muted); padding: 2rem;">
+        Aucune guilde créée. Soyez le premier à fonder une alliance !
+      </div>`;
+      return;
+    }
+
+    guilds.forEach((g) => {
+      const totalGuildXP = g.members.reduce((sum, m) => sum + m.totalXP, 0);
+
+      const achsHtml = g.achievements.map(a => `
+        <span class="guild-badge-item ${a.unlocked ? 'unlocked' : 'locked'}" title="${escapeHtml(a.description)}">
+          ${a.unlocked ? '✅' : '🔒'} ${a.icon} <strong>${escapeHtml(a.title)}</strong>
+        </span>
+      `).join("");
+
+      const membersHtml = g.members.map((m) => {
+        return `
+          <div class="guild-member-row">
+            <span class="g-rank-ico" title="${escapeHtml(m.guildRank)}">${m.guildRankIcon}</span>
+            <div class="g-member-details">
+              <strong>${escapeHtml(m.name)} <span class="g-member-rank-tag">(${escapeHtml(m.guildRank)})</span></strong>
+              <span class="g-member-sub">${m.totalXP} XP • 🏅 ${m.totalBadgesCount} badges</span>
+            </div>
+            <button class="leave-guild-btn small muted" data-guild-id="${g.id}" data-player-id="${m.id}" title="Exclure ce membre">🗑️</button>
+          </div>
+        `;
+      }).join("");
+
+      const availablePlayers = players.filter(p => !g.members.some(gm => gm.id === p.id));
+      let addMemberHtml = "";
+      if (availablePlayers.length > 0) {
+        addMemberHtml = `
+          <div class="add-member-control">
+            <select class="add-member-select" data-guild-id="${g.id}">
+              <option value="">+ Recruter un joueur...</option>
+              ${availablePlayers.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (${p.totalXP} XP)</option>`).join("")}
+            </select>
+          </div>
+        `;
+      } else {
+        addMemberHtml = `<p class="muted small" style="text-align:center;margin-top:0.5rem">Tous les joueurs sont déjà membres.</p>`;
+      }
+
+      const card = document.createElement("div");
+      card.className = "guild-card";
+      card.style.setProperty("--guild-accent", g.badgeColor);
+      card.innerHTML = `
+        <div class="guild-card-header" style="background: linear-gradient(135deg, ${g.badgeColor}22, ${g.badgeColor}05);">
+          <div class="guild-emblem" style="background-color: ${g.badgeColor}; box-shadow: 0 0 15px ${g.badgeColor}60;">${escapeHtml(g.badgeIcon)}</div>
+          <div class="guild-title-section">
+            <h3>${escapeHtml(g.name)}</h3>
+            <span class="guild-stat-summary">${g.members.length} membre${g.members.length !== 1 ? 's' : ''} • ${totalGuildXP} XP collectif</span>
+          </div>
+          <div class="guild-actions">
+            <button class="edit-guild-btn" data-id="${g.id}" data-name="${escapeHtml(g.name)}" data-icon="${escapeHtml(g.badgeIcon)}" data-color="${g.badgeColor}" title="Modifier la guilde">✏️</button>
+            <button class="delete-guild-btn" data-id="${g.id}" data-name="${escapeHtml(g.name)}" title="Dissoudre la guilde">🗑️</button>
+          </div>
+        </div>
+
+        <div class="guild-card-body">
+          <div class="guild-achievements-section">
+            <h4>🏅 Hauts Faits de l'Alliance</h4>
+            <div class="guild-achievements-list">
+              ${achsHtml}
+            </div>
+          </div>
+
+          <div class="guild-members-section">
+            <h4>👥 Compagnons</h4>
+            <div class="guild-members-list">
+              ${membersHtml || '<p class="muted small" style="text-align:center;padding:0.5rem 0;">Aucun membre pour le moment.</p>'}
+            </div>
+            ${addMemberHtml}
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+
+    container.querySelectorAll(".add-member-select").forEach((select) => {
+      select.addEventListener("change", async (e) => {
+        const playerId = e.target.value;
+        const guildId = select.dataset.guildId;
+        if (!playerId) return;
+        try {
+          await api.joinGuild(guildId, playerId);
+          showToast("Recrutement réussi ✓", "ok");
+          await refreshGuilds();
+          await refreshLeaderboard();
+        } catch (err) {
+          showToast(err.message, "err");
+        }
+      });
+    });
+
+    container.querySelectorAll(".leave-guild-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const guildId = btn.dataset.guildId;
+        const playerId = btn.dataset.playerId;
+        const ok = await showConfirm("Voulez-vous vraiment exclure ce membre de la guilde ?");
+        if (!ok) return;
+        try {
+          await api.leaveGuild(guildId, playerId);
+          showToast("Membre exclu ✓", "ok");
+          await refreshGuilds();
+          await refreshLeaderboard();
+        } catch (err) {
+          showToast(err.message, "err");
+        }
+      });
+    });
+
+    container.querySelectorAll(".edit-guild-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.getElementById("g-editing-id").value = btn.dataset.id;
+        document.getElementById("g-name").value = btn.dataset.name;
+        document.getElementById("g-badgeIcon").value = btn.dataset.icon;
+        document.getElementById("g-badgeColor").value = btn.dataset.color;
+        document.getElementById("g-submit").textContent = "Enregistrer la Guilde";
+        document.getElementById("g-cancel").classList.remove("hidden");
+        document.getElementById("guild-form").scrollIntoView({ behavior: "smooth" });
+        if (gPreview) {
+          gPreview.textContent = btn.dataset.icon;
+          gPreview.style.backgroundColor = btn.dataset.color;
+        }
+      });
+    });
+
+    container.querySelectorAll(".delete-guild-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const guildId = btn.dataset.id;
+        const name = btn.dataset.name;
+        const ok = await showConfirm(`Dissoudre la guilde "${name}" ? Cette action est irréversible.`);
+        if (!ok) return;
+        try {
+          if (!adminPassword) {
+            const hasAdmin = await ensureAdminPassword();
+            if (!hasAdmin) return;
+          }
+          await api.deleteGuild(guildId);
+          showToast("Guilde dissoute ✓", "ok");
+          await refreshGuilds();
+          await refreshLeaderboard();
+        } catch (err) {
+          showToast(err.message, "err");
+        }
+      });
+    });
+
+  } catch (err) {
+    showToast(err.message, "err");
+  }
+}
+
+async function ensureAdminPassword() {
+  const val = prompt("Mot de passe admin requis pour modifier/supprimer une guilde :");
+  if (val === null) return false;
+  const psw = val.trim();
+  if (psw) {
+    adminPassword = psw;
+    localStorage.setItem("adminPassword", adminPassword);
+    updateLockBtn();
+    return true;
+  }
+  return false;
 }
 
 // ----- Splash screen -----
@@ -837,7 +1102,7 @@ function escapeHtml(s) {
   const skipBtn   = document.getElementById("splash-skip");
   const ctaBtn    = document.getElementById("splash-cta");
   const recallBtn = document.getElementById("splash-btn");
-  const TOTAL = 3;
+  const TOTAL = 4;
   let current = 0;
 
   function goTo(n) {
@@ -851,7 +1116,7 @@ function escapeHtml(s) {
   }
 
   function openSplash() { overlay.classList.remove("hidden"); goTo(0); }
-  function closeSplash() { overlay.classList.add("hidden"); localStorage.setItem(SPLASH_KEY, "1"); }
+  function closeSplash() { overlay.classList.add("hidden"); localStorage.setItem(SPLASH_KEY, SPLASH_VERSION); }
 
   prevBtn.addEventListener("click", () => goTo(current - 1));
   nextBtn.addEventListener("click", () => goTo(current + 1));
@@ -866,7 +1131,7 @@ function escapeHtml(s) {
     if (e.key === "Escape")     closeSplash();
   });
 
-  if (!localStorage.getItem(SPLASH_KEY)) openSplash();
+  if (localStorage.getItem(SPLASH_KEY) !== SPLASH_VERSION) openSplash();
 })();
 
 // ----- Boot -----
