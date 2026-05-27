@@ -716,7 +716,8 @@ async function refreshLeaderboard() {
   setLoading(btn, true);
   try {
     const seasonId = document.getElementById("lb-season").value;
-    const data = await api.leaderboard(seasonId); // Pass seasonId to API
+    const response = await api.leaderboard(seasonId); // Pass seasonId to API
+    const data = Array.isArray(response) ? response : (response.leaderboard || []);
     const tbody = document.querySelector("#lb-table tbody");
     const podium = document.getElementById("lb-podium");
     const empty = document.getElementById("lb-empty");
@@ -771,15 +772,6 @@ async function refreshLeaderboard() {
     }
     empty.classList.add("hidden");
 
-    tbody.innerHTML = "";
-    podium.innerHTML = "";
-
-    if (!data || !data.length) {
-      empty.classList.remove("hidden");
-      return;
-    }
-    empty.classList.add("hidden");
-
     // Podium top 3
     const top3 = data.slice(0, 3);
     const podiumOrder = [1, 0, 2];
@@ -789,10 +781,11 @@ async function refreshLeaderboard() {
         if (!p) return '<div class="podium-spot empty"></div>';
         const rank = idx + 1;
         const crown = rank === 1 ? "👑" : rank === 2 ? "🥈" : "🥉";
+        const nameVal = p.playerName || p.name;
         return `
           <div class="podium-spot rank-${rank}">
             <div class="podium-crown">${crown}</div>
-            <div class="podium-name">${escapeHtml(p.name)}</div>
+            <div class="podium-name">${escapeHtml(nameVal)}</div>
             <div class="podium-xp">${p.totalXP} XP</div>
             <div class="podium-base"></div>
           </div>
