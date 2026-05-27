@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE "match_participants" ADD COLUMN     "medals" TEXT[] DEFAULT ARRAY[]::TEXT[];
+-- ALTER TABLE "match_participants" ADD COLUMN     "medals" TEXT[] DEFAULT ARRAY[]::TEXT[];
 
 -- CreateTable
 CREATE TABLE "guilds" (
