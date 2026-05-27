@@ -812,8 +812,23 @@ async function refreshLeaderboard() {
         xpLabel = `${xpRemaining} XP avant ${nextLevel.title}`;
       }
 
-      const levelSlug = r.level.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      // Calculer le niveau s'il n'est pas fourni (ex: classement par saison)
+      let levelTitle = r.level;
+      if (!levelTitle) {
+        for (let idx = LEVELS.length - 1; idx >= 0; idx--) {
+          if (r.totalXP >= LEVELS[idx].minXP) {
+            levelTitle = LEVELS[idx].title;
+            break;
+          }
+        }
+        if (!levelTitle) levelTitle = LEVELS[0].title;
+      }
+
+      const levelSlug = levelTitle.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
       const tr = document.createElement("tr");
+      
+      const nameVal = r.playerName || r.name || "Joueur inconnu";
+      const matchCountVal = r.matchesPlayed !== undefined ? r.matchesPlayed : (r.matchCount !== undefined ? r.matchCount : 0);
       
       const guildBadgesHtml = (r.guilds || []).map(g => `
         <span class="player-mini-guild-badge" style="background-color: ${g.badgeColor}" title="${escapeHtml(g.name)}">${escapeHtml(g.badgeIcon)}</span>
@@ -823,24 +838,23 @@ async function refreshLeaderboard() {
         <td>${i + 1}</td>
         <td>
           <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">
-            <strong>${escapeHtml(r.name)}</strong>
+            <strong>${escapeHtml(nameVal)}</strong>
             ${guildBadgesHtml}
           </div>
         </td>
         <td>
           <div class="lb-stats">
-            <span class="hidden">${r.matchCount} match${r.matchCount !== 1 ? "s" : ""}</span>
-            <span class="lb-xp-total">${r.totalXP} XP</span>
+            <span>${matchCountVal} match${matchCountVal !== 1 ? "s" : ""}</span>
           </div>
         </td>
-        <td>${r.totalXP} XP</td>
+        <td><strong>${r.totalXP} XP</strong></td>
         <td>
           <div class="xp-progress-bg">
             <div class="xp-progress-bar" data-pct="${progressPercent}" style="width:0%"></div>
           </div>
           <div class="xp-next-label">${xpLabel}</div>
         </td>
-        <td><span class="level-badge level-${levelSlug}">${r.level}</span></td>
+        <td><span class="level-badge level-${levelSlug}">${levelTitle}</span></td>
       `;
       tbody.appendChild(tr);
       bars.push(tr.querySelector(".xp-progress-bar"));
