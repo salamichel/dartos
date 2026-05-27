@@ -140,7 +140,8 @@ guildsRouter.get("/", async (_req, res) => {
     };
   });
 
-  res.json(formatted);
+  const sortedGuilds = formatted.sort((a, b) => b.collectiveXP - a.collectiveXP);
+  res.json(sortedGuilds);
 });
 
 // POST /guilds - Create a new guild

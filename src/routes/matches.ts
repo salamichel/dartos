@@ -12,12 +12,34 @@ matchesRouter.post("/", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
-  const { seasonId, playedAt, winner, losers } = parsed.data;
+  const { playedAt, winner, losers } = parsed.data;
+  let { seasonId } = parsed.data; // seasonId is now optional from schema
+
+  const matchDate = playedAt ?? new Date();
+
+  // If seasonId is not provided, find it based on playedAt date
+  if (!seasonId) {
+    const foundSeason = await prisma.season.findFirst({
+      where: {
+        startedAt: { lte: matchDate },
+        OR: [
+          { endedAt: null },
+          { endedAt: { gte: matchDate } },
+        ],
+      },
+      orderBy: { startedAt: "desc" }, // In case of overlapping, pick the latest started
+    });
+
+    if (!foundSeason) {
+      return res.status(400).json({ error: "No active season found for this date. Please create a season first or check the date." });
+    }
+    seasonId = foundSeason.id;
+  }
 
   const season = await prisma.season.findUnique({ where: { id: seasonId } });
-  if (!season) return res.status(404).json({ error: "Season not found" });
-  if (season.endedAt && season.endedAt <= new Date()) {
-    return res.status(409).json({ error: "Season is closed" });
+  if (!season) return res.status(404).json({ error: "Season not found" }); // Should not happen if foundSeason existed
+  if (season.endedAt && season.endedAt <= matchDate) {
+    return res.status(409).json({ error: "Season is closed for this date" });
   }
 
   const allPlayerIds = [winner.playerId, ...losers.map(l => l.playerId)];
@@ -116,13 +138,38 @@ matchesRouter.put("/:id", requireAdminPassword, async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
-  const { seasonId, playedAt, winner, losers } = parsed.data;
+  const { playedAt, winner, losers } = parsed.data;
+  let { seasonId } = parsed.data;
 
   const match = await prisma.match.findUnique({ where: { id } });
   if (!match) return res.status(404).json({ error: "Match not found" });
 
+  const matchDate = playedAt ?? match.playedAt; // Use existing playedAt if not provided in update
+
+  // If seasonId is not provided (or needs to be re-evaluated), find it based on playedAt date
+  if (!seasonId) {
+    const foundSeason = await prisma.season.findFirst({
+      where: {
+        startedAt: { lte: matchDate },
+        OR: [
+          { endedAt: null },
+          { endedAt: { gte: matchDate } },
+        ],
+      },
+      orderBy: { startedAt: "desc" },
+    });
+
+    if (!foundSeason) {
+      return res.status(400).json({ error: "No active season found for this date. Please create a season first or check the date." });
+    }
+    seasonId = foundSeason.id;
+  }
+  
   const season = await prisma.season.findUnique({ where: { id: seasonId } });
   if (!season) return res.status(404).json({ error: "Season not found" });
+  if (season.endedAt && season.endedAt <= matchDate) {
+    return res.status(409).json({ error: "Season is closed for this date" });
+  }
 
   const allPlayerIds = [winner.playerId, ...losers.map(l => l.playerId)];
   const foundPlayers = await prisma.player.findMany({

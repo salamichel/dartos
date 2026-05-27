@@ -27,6 +27,7 @@
     <section id="tab-leaderboard" class="tab active">
       <div class="leaderboard-header">
         <h2>Classement</h2>
+        <div id="lb-season-timer" class="season-timer"></div> <!-- Timer container -->
         <div id="lb-podium" class="podium"></div>
       </div>
       
@@ -110,9 +111,7 @@
       <h2 id="match-form-title">Enregistrer un match terminé</h2>
       <form id="match-form">
         <input type="hidden" id="m-id" />
-        <label>Saison
-          <select id="m-season" required></select>
-        </label>
+        <!-- Saison selection removed, now auto-detected by playedAt -->
         <label>Date / heure (optionnel)
           <input type="datetime-local" id="m-playedAt" />
         </label>
@@ -150,9 +149,28 @@
 
     <section id="tab-guilds" class="tab">
       <h2>🛡️ Guildes</h2>
+
+      <!-- Classement des Guildes -->
+      <h3 style="margin-top: 2rem;">Classement des Guildes</h3>
+      <div id="guild-ranking-container" class="ranking-container">
+        <table id="guild-ranking-table" class="data-table">
+          <thead>
+            <tr>
+              <th>Rang</th>
+              <th>Guilde</th>
+              <th>XP Collective</th>
+              <th>Membres</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Les lignes de classement seront insérées ici par JavaScript -->
+          </tbody>
+        </table>
+        <p id="guild-ranking-empty" class="muted hidden">Aucune guilde enregistrée pour l'instant.</p>
+      </div>
       
       <!-- Aide et Légende des Rangs & Hauts Faits -->
-      <details class="guilds-help-legend">
+      <details class="guilds-help-legend" style="margin-top: 2rem;">
         <summary>ℹ️ Comprendre les Rangs & Hauts Faits d'Alliance</summary>
         <div class="legend-content">
           <div class="legend-section">
@@ -224,6 +242,12 @@
       <form id="season-form">
         <input type="hidden" id="s-editing-id" />
         <input type="text" id="s-name" placeholder="Nom de la saison" required maxlength="64" />
+        <label>Date de début (optionnel)
+          <input type="datetime-local" id="s-startedAt" />
+        </label>
+        <label>Date de fin (optionnel)
+          <input type="datetime-local" id="s-endedAt" />
+        </label>
         <div class="rules-config">
           <label>⚔️ XP par adversaire
             <input type="number" id="s-xpOpponent" value="50" />

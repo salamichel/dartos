@@ -39,7 +39,12 @@ const api = {
   listMatches: (seasonId) => api.req("/matches" + (seasonId ? `?seasonId=${seasonId}` : "")),
   recordMatch: (payload) => api.req("/matches", { method: "POST", body: JSON.stringify(payload) }),
   deleteMatch: (id) => api.req(`/matches/${id}`, { method: "DELETE" }),
-  leaderboard: () => api.req(`/leaderboard`),
+  leaderboard: (seasonId) => {
+    if (seasonId) {
+      return api.req(`/seasons/${seasonId}/leaderboard`);
+    }
+    return api.req(`/leaderboard`); // Global leaderboard
+  },
   listGuilds: () => api.req("/guilds"),
   createGuild: (payload) => api.req("/guilds", { method: "POST", body: JSON.stringify(payload) }),
   updateGuild: (id, payload) => api.req(`/guilds/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
@@ -197,11 +202,13 @@ async function refreshSeasons() {
 
   for (const s of seasons) {
     const li = document.createElement("li");
-    const date = new Date(s.startedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    const startDate = s.startedAt ? new Date(s.startedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "Non définie";
+    const endDate = s.endedAt ? new Date(s.endedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "Non définie";
+    const dateDisplay = `Du ${startDate} au ${endDate}`;
     li.innerHTML = `
       <div>
         <span style="font-weight:700">${escapeHtml(s.name)}</span>
-        <span class="muted" style="font-size:0.78rem;display:block">Depuis le ${date}</span>
+        <span class="muted" style="font-size:0.78rem;display:block">${dateDisplay}</span>
       </div>
       <div style="display:flex;gap:0.4rem">
         <button class="edit-season small muted" data-id="${s.id}" style="width:auto">✏️ Modifier</button>
@@ -295,9 +302,17 @@ const SEASON_FIELD_MAP = {
   xpBonusTueurDeGeants: "s-xpTueur",
 };
 
+function formatDateForInput(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toISOString().slice(0, 16);
+}
+
 function editSeason(s) {
   document.getElementById("s-editing-id").value = s.id;
   document.getElementById("s-name").value = s.name;
+  document.getElementById("s-startedAt").value = formatDateForInput(s.startedAt);
+  document.getElementById("s-endedAt").value = formatDateForInput(s.endedAt);
   document.getElementById("s-submit").textContent = "Mettre à jour";
   document.getElementById("s-cancel").classList.remove("hidden");
 
@@ -312,6 +327,8 @@ function editSeason(s) {
 function resetSeasonForm() {
   document.getElementById("s-editing-id").value = "";
   document.getElementById("s-name").value = "";
+  document.getElementById("s-startedAt").value = "";
+  document.getElementById("s-endedAt").value = "";
   document.getElementById("s-submit").textContent = "Créer";
   document.getElementById("s-cancel").classList.add("hidden");
   for (const [key, id] of Object.entries(SEASON_FIELD_MAP)) {
@@ -330,7 +347,15 @@ document.getElementById("season-form").addEventListener("submit", async (e) => {
   const btn = document.getElementById("s-submit");
   setLoading(btn, true);
 
-  const payload = { name };
+  const startedAt = document.getElementById("s-startedAt").value;
+  const endedAt = document.getElementById("s-endedAt").value;
+
+  const payload = { name }; // Removed TypeScript type annotation
+  if (startedAt) payload.startedAt = new Date(startedAt).toISOString();
+  // Only add endedAt if it's set, and allow null explicitly
+  if (endedAt) payload.endedAt = new Date(endedAt).toISOString();
+  else if (endedAt === "") payload.endedAt = null; // Explicitly send null if cleared
+
   for (const [key, id] of Object.entries(SEASON_FIELD_MAP)) {
     const el = document.getElementById(id);
     if (el && el.value !== "") payload[key] = Number(el.value);
@@ -500,7 +525,7 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
   const status = document.getElementById("m-status");
   const btn = e.submitter || e.target.querySelector('[type="submit"]');
   const matchId = document.getElementById("m-id").value;
-  const seasonId = Number(document.getElementById("m-season").value);
+  // seasonId is no longer directly selected by user, it's auto-detected
   const playedAtRaw = document.getElementById("m-playedAt").value;
   const rows = [...participantsEl.querySelectorAll(".participant-row")];
 
@@ -527,8 +552,9 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
     return setStatus(status, "Un joueur est sélectionné plusieurs fois", false);
   }
 
-  const payload = { seasonId, winner: { playerId: winnerId, finishType }, losers };
+  const payload = { winner: { playerId: winnerId, finishType }, losers }; // Removed TypeScript type annotation
   if (playedAtRaw) payload.playedAt = new Date(playedAtRaw).toISOString();
+  // seasonId is no longer sent from client, it's auto-detected by server
 
   setLoading(btn, true);
   try {
@@ -663,7 +689,7 @@ async function refreshMatchesList() {
 
 function editMatch(m) {
   document.getElementById("m-id").value = m.id;
-  document.getElementById("m-season").value = m.seasonId;
+  // document.getElementById("m-season").value = m.seasonId; // Removed season selection
   document.getElementById("m-playedAt").value = new Date(m.playedAt).toISOString().slice(0, 16);
   document.getElementById("match-form-title").textContent = "Modifier le match #" + m.id;
 
@@ -683,14 +709,67 @@ function editMatch(m) {
 document.getElementById("ml-refresh").addEventListener("click", refreshMatchesList);
 
 // ----- Leaderboard -----
+let leaderboardTimer = null; // To hold the interval reference
+
 async function refreshLeaderboard() {
   const btn = document.getElementById("lb-refresh");
   setLoading(btn, true);
   try {
-    const data = await api.leaderboard();
+    const seasonId = document.getElementById("lb-season").value;
+    const data = await api.leaderboard(seasonId); // Pass seasonId to API
     const tbody = document.querySelector("#lb-table tbody");
     const podium = document.getElementById("lb-podium");
     const empty = document.getElementById("lb-empty");
+    const timerEl = document.getElementById("lb-season-timer");
+
+    // Clear previous timer if any
+    if (leaderboardTimer) clearInterval(leaderboardTimer);
+    timerEl.textContent = "";
+
+    // If a season is selected, fetch its details to display timer
+    if (seasonId) {
+      const selectedSeason = seasons.find(s => s.id == seasonId);
+      if (selectedSeason && selectedSeason.endedAt) {
+        const endDate = new Date(selectedSeason.endedAt);
+        const updateTimer = () => {
+          const now = new Date();
+          const diff = endDate.getTime() - now.getTime();
+
+          if (diff <= 0) {
+            timerEl.textContent = `Saison "${selectedSeason.name}" terminée.`;
+            clearInterval(leaderboardTimer);
+            return;
+          }
+
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+          let timerText = "Saison se termine dans : ";
+          if (days > 0) timerText += `${days}j `;
+          if (hours > 0) timerText += `${hours}h `;
+          if (minutes > 0) timerText += `${minutes}m `;
+          timerText += `${seconds}s`;
+
+          timerEl.textContent = timerText;
+        };
+        updateTimer();
+        leaderboardTimer = setInterval(updateTimer, 1000);
+      } else {
+        timerEl.textContent = "Saison active, pas de date de fin définie.";
+      }
+    }
+
+
+    tbody.innerHTML = "";
+    podium.innerHTML = "";
+
+    if (!data || !data.length) {
+      empty.classList.remove("hidden");
+      return;
+    }
+    empty.classList.add("hidden");
 
     tbody.innerHTML = "";
     podium.innerHTML = "";
@@ -832,7 +911,13 @@ function onTabShow(tab) {
   if (tab === "leaderboard") {
     refreshLeaderboard();
     renderLevelsLegend();
-  } else if (tab === "matches") {
+  } else {
+    // Stop the timer when switching from leaderboard tab
+    if (leaderboardTimer) clearInterval(leaderboardTimer);
+    document.getElementById("lb-season-timer").textContent = "";
+  }
+  
+  if (tab === "matches") {
     refreshMatchesList();
   } else if (tab === "match" && participantsEl.children.length === 0) {
     addParticipantRow();
@@ -919,9 +1004,42 @@ async function refreshGuilds() {
   const container = document.getElementById("guilds-container");
   if (!container) return;
 
+  const rankingTbody = document.querySelector("#guild-ranking-table tbody");
+  const rankingEmpty = document.getElementById("guild-ranking-empty");
+  const rankingTable = document.getElementById("guild-ranking-table");
+
   try {
     const guilds = await api.listGuilds();
     players = await api.listPlayers();
+
+    // Rendre le classement des guildes
+    if (rankingTbody) {
+      rankingTbody.innerHTML = "";
+      if (guilds.length === 0) {
+        if (rankingEmpty) rankingEmpty.classList.remove("hidden");
+        if (rankingTable) rankingTable.classList.add("hidden");
+      } else {
+        if (rankingEmpty) rankingEmpty.classList.add("hidden");
+        if (rankingTable) rankingTable.classList.remove("hidden");
+
+        guilds.forEach((g, idx) => {
+          const tr = document.createElement("tr");
+          const membersList = g.members.map(m => `${escapeHtml(m.name)} (${m.totalXP} XP)`).join(", ");
+          tr.innerHTML = `
+            <td><strong>${idx + 1}</strong></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:0.5rem">
+                <span class="player-mini-guild-badge" style="background-color: ${g.badgeColor}; font-size: 1.2rem; padding: 0.2rem 0.4rem; border-radius: 4px;" title="${escapeHtml(g.name)}">${escapeHtml(g.badgeIcon)}</span>
+                <strong>${escapeHtml(g.name)}</strong>
+              </div>
+            </td>
+            <td><strong>${g.collectiveXP} XP</strong></td>
+            <td style="font-size:0.85rem;color:var(--muted);">${membersList || "Aucun membre"}</td>
+          `;
+          rankingTbody.appendChild(tr);
+        });
+      }
+    }
 
     container.innerHTML = "";
     if (guilds.length === 0) {
