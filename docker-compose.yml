@@ -28,3 +28,4 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     ports:
       - "${APP_PORT:-8030}:3000"
+      - "5555:5555"
