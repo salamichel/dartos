@@ -247,18 +247,12 @@
       <form id="season-form">
         <input type="hidden" id="s-editing-id" />
         <input type="text" id="s-name" placeholder="Nom de la saison" required maxlength="64" />
-        <label>Date de début (optionnel)
-          <input type="datetime-local" id="s-startedAt" />
-        </label>
-        <label>Date de fin (optionnel)
-          <input type="datetime-local" id="s-endedAt" />
-        </label>
         <div class="rules-config">
           <label>📅 Début
-            <input type="date" id="s-startedAt" />
+            <input type="datetime-local" id="s-startedAt" />
           </label>
           <label>🏁 Fin (optionnel)
-            <input type="date" id="s-endedAt" />
+            <input type="datetime-local" id="s-endedAt" />
           </label>
         </div>
         <div class="rules-config">
