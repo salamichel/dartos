@@ -196,7 +196,7 @@ async function refreshPlayers() {
     li.innerHTML = `
       <div class="player-info">
         <strong>${escapeHtml(p.name)}</strong>
-        <span class="muted">${p.matchCount} match${p.matchCount !== 1 ? "s" : ""} · ${p.totalXP} XP</span>
+        <span class="muted">${p.totalXP} XP</span>
         ${badgesHtml}
       </div>
       <button class="muted small edit-player" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Modifier</button>
