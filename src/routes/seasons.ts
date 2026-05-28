@@ -125,7 +125,17 @@ seasonsRouter.get("/:id/leaderboard", async (req, res) => {
 
   const participations = await prisma.matchParticipant.findMany({
     where: { match: { seasonId } },
-    include: { player: true },
+    include: {
+      player: {
+        include: {
+          guilds: {
+            include: {
+              guild: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   type Agg = {
@@ -134,6 +144,7 @@ seasonsRouter.get("/:id/leaderboard", async (req, res) => {
     matchesPlayed: number;
     totalXP: number;
     wins: number;
+    guilds: { id: number; name: string; badgeIcon: string; badgeColor: string }[];
   };
   const byPlayer = new Map<number, Agg>();
 
@@ -145,6 +156,12 @@ seasonsRouter.get("/:id/leaderboard", async (req, res) => {
         matchesPlayed: 0,
         totalXP: 0,
         wins: 0,
+        guilds: p.player.guilds.map((pg: any) => ({
+          id: pg.guild.id,
+          name: pg.guild.name,
+          badgeIcon: pg.guild.badgeIcon,
+          badgeColor: pg.guild.badgeColor,
+        })),
       };
     entry.matchesPlayed += 1;
     entry.totalXP += p.xpEarned;

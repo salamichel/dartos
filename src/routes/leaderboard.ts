@@ -12,6 +12,11 @@ leaderboardRouter.get("/", async (req, res) => {
           xpEarned: true,
         },
       },
+      guilds: {
+        include: {
+          guild: true,
+        },
+      },
     },
   });
 
@@ -29,6 +34,12 @@ leaderboardRouter.get("/", async (req, res) => {
       matchCount,
       xpPerMatch: parseFloat(xpPerMatch),
       level: levelInfo.title,
+      guilds: player.guilds.map((pg) => ({
+        id: pg.guild.id,
+        name: pg.guild.name,
+        badgeIcon: pg.guild.badgeIcon,
+        badgeColor: pg.guild.badgeColor,
+      })),
     };
   });
 

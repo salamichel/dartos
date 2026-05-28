@@ -4,7 +4,7 @@ import { z } from "zod";
 // numerically = losing) player carries a score_left. We let the route handler
 // enforce the cross-field invariants once it knows N (the participant count).
 export const recordMatchSchema = z.object({
-  seasonId: z.number().int().positive(),
+  seasonId: z.number().int().positive().optional(),
   playedAt: z.coerce.date().optional(),
   winner: z.object({
     playerId: z.number().int().positive(),
@@ -39,6 +39,22 @@ export const createPlayerSchema = z.object({
   name: z.string().trim().min(1).max(64),
 });
 
+export const createGuildSchema = z.object({
+  name: z.string().trim().min(1).max(64),
+  badgeIcon: z.string().trim().min(1).max(8),
+  badgeColor: z.string().trim().min(1).max(32),
+});
+
+export const updateGuildSchema = z.object({
+  name: z.string().trim().min(1).max(64).optional(),
+  badgeIcon: z.string().trim().min(1).max(8).optional(),
+  badgeColor: z.string().trim().min(1).max(32).optional(),
+});
+
+export const addGuildMemberSchema = z.object({
+  playerId: z.number().int().positive(),
+});
+
 const seasonRulesSchema = z.object({
   xpPerDefeatedOpponent: z.number().int().min(0).optional(),
   xpBonusSimple: z.number().int().min(0).optional(),
@@ -60,8 +76,12 @@ const seasonRulesSchema = z.object({
 
 export const createSeasonSchema = seasonRulesSchema.extend({
   name: z.string().trim().min(1).max(64),
+  startedAt: z.coerce.date().optional(),
+  endedAt: z.coerce.date().optional().nullable(),
 });
 
 export const updateSeasonSchema = seasonRulesSchema.extend({
   name: z.string().trim().min(1).max(64).optional(),
+  startedAt: z.coerce.date().optional(),
+  endedAt: z.coerce.date().optional().nullable(),
 });

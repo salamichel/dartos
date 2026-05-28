@@ -104,8 +104,8 @@ export function calculateMatchResults(
     let xp = config.xpSurvivorBase;
     const medals: string[] = [];
 
-    // Poulidor: rank 2 and score < 10
-    if (rank === 2 && loser.scoreLeft < 10) {
+    // Poulidor: rank 1 and score < 10
+    if (rank > 1 && loser.scoreLeft < 10) {
       xp += config.xpBonusPoulidor;
       medals.push("POULIDOR");
     }

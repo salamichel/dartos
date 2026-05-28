@@ -316,7 +316,8 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
   #lb-table td { display: table-cell; padding: 0.9rem 1rem; position: static; border-bottom: 1px solid var(--border); vertical-align: middle; }
   #lb-table td:nth-child(1) { font-size: 1rem; font-weight: 700; color: var(--text); position: static; }
   #lb-table td:nth-child(2) { margin: 0; }
-  #lb-table td:nth-child(3) { margin: 0; color: var(--text); font-size: 1rem; }
+  #lb-table th:nth-child(3),
+  #lb-table td:nth-child(3) { display: none; }
   #lb-table td:nth-child(4) { display: table-cell; }
   #lb-table td:nth-child(5) { min-width: 160px; margin-top: 0; }
   #lb-table td:nth-child(6) { position: static; white-space: nowrap; text-align: left; }
@@ -435,3 +436,433 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
   padding: 0.4rem; margin-top: 0.75rem; width: 100%; border: none;
 }
 #splash-skip:hover { color: var(--text); }
+
+/* ----- Guildes Styles ----- */
+.guilds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.guild-card {
+  background: rgba(30, 41, 59, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.guild-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--guild-accent);
+  box-shadow: 0 0 20px -3px var(--guild-accent)40;
+}
+
+.guild-card-header {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  position: relative;
+}
+
+.guild-emblem {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  color: #fff;
+  transition: transform 0.25s ease;
+}
+
+.guild-card:hover .guild-emblem {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.guild-title-section {
+  flex: 1;
+}
+
+.guild-title-section h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.guild-stat-summary {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.guild-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.guild-actions button {
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: var(--muted);
+  padding: 0.4rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+
+.guild-actions button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+.guild-card-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  flex: 1;
+}
+
+.guild-achievements-section h4, .guild-members-section h4 {
+  margin: 0 0 0.6rem 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.guild-achievements-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.guild-badge-item {
+  font-size: 0.72rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  transition: all 0.2s;
+}
+
+.guild-badge-item.unlocked {
+  background: var(--guild-accent)15;
+  border-color: var(--guild-accent)40;
+  color: #fff;
+  font-weight: 600;
+}
+
+.guild-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 0.75rem;
+  padding-right: 0.25rem;
+}
+
+.guild-members-list::-webkit-scrollbar {
+  width: 4px;
+}
+.guild-members-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.guild-members-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+}
+
+.guild-member-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  transition: all 0.2s;
+}
+
+.guild-member-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.g-rank-ico {
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+}
+
+.g-member-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.g-member-details strong {
+  font-size: 0.85rem;
+  color: #fff;
+}
+
+.g-member-rank-tag {
+  font-size: 0.72rem;
+  color: var(--accent);
+  font-weight: 500;
+  margin-left: 0.25rem;
+  opacity: 0.85;
+}
+
+.g-member-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.leave-guild-btn {
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s;
+}
+
+.guild-member-row:hover .leave-guild-btn {
+  opacity: 1;
+}
+
+.leave-guild-btn:hover {
+  background: rgba(226, 59, 59, 0.2) !important;
+  color: #ff5f5f !important;
+}
+
+/* Form Styles */
+.guild-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1.25rem;
+}
+
+.guild-form-row input[type="text"] {
+  flex: 1;
+  min-width: 220px;
+}
+
+.emblem-selectors {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.emblem-selectors label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.emblem-selectors input[type="color"] {
+  height: 42px;
+  width: 50px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+}
+
+.guild-preview-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.preview-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.guild-badge-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  color: #fff;
+  background-color: #3dc7ff;
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.2s ease;
+}
+
+.add-member-control {
+  margin-top: 0.25rem;
+}
+
+.add-member-control select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-member-control select:hover {
+  border-color: var(--guild-accent);
+}
+
+/* Leaderboard Mini Guild Badges */
+.player-mini-guild-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  color: #fff;
+  cursor: default;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.35);
+  transition: transform 0.15s ease;
+}
+
+.player-mini-guild-badge:hover {
+  transform: scale(1.2);
+}
+
+/* Expandable Guild Legend & Help Details */
+.guilds-help-legend {
+  background: rgba(30, 41, 59, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 0.8rem 1.2rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.guilds-help-legend[open] {
+  background: rgba(30, 41, 59, 0.75);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.guilds-help-legend summary {
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* --- Styles pour les tableaux de données génériques (guildes, etc.) --- */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table thead { display: none; }
+.data-table tbody tr {
+  display: block; background: var(--panel); margin-bottom: 0.8rem; padding: 1rem; border-radius: 16px;
+  border: 1px solid var(--border); position: relative;
+  transition: border-color 0.2s;
+}
+.data-table tbody tr:hover { border-color: var(--accent); }
+.data-table td { display: block; padding: 0.2rem 0; }
+.data-table td:nth-child(1) { font-size: 1.4rem; font-weight: 900; color: rgba(255,255,255,0.06); position: absolute; left: 1rem; top: 0.8rem; }
+.data-table td:nth-child(2) { margin-left: 2.2rem; font-weight: 800; font-size: 1.1rem; color: white; }
+.data-table td:nth-child(3) { margin-left: 2.2rem; font-size: 0.75rem; color: var(--muted); }
+/* La 4ème colonne du tableau des guildes doit être visible sur mobile */
+#guild-ranking-table td:nth-child(4) { display: block; margin-left: 2.2rem; font-size: 0.75rem; color: var(--muted); }
+
+@media (min-width: 768px) {
+  .data-table thead { display: table-header-group; background: var(--bg); }
+  .data-table thead th { padding: 0.6rem 1rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); text-align: left; border-bottom: 1px solid var(--border); }
+  .data-table tbody tr { display: table-row; background: transparent; border: none; border-radius: 0; padding: 0; margin: 0; }
+  .data-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .data-table td { display: table-cell; padding: 0.9rem 1rem; position: static; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .data-table td:nth-child(1) { font-size: 1rem; font-weight: 700; color: var(--text); position: static; }
+  .data-table td:nth-child(2) { margin: 0; }
+  .data-table td:nth-child(3) { display: table-cell; }
+  /* La 4ème colonne du tableau des guildes doit être visible sur desktop */
+  #guild-ranking-table td:nth-child(4) { display: table-cell; margin: 0; }
+}
+
+.guilds-help-legend summary:hover {
+  color: #fff;
+  text-shadow: 0 0 10px var(--accent);
+}
+
+.legend-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.legend-section h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  color: #fff;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.legend-section p.muted {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+.ranks-legend-list, .achievements-legend-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ranks-legend-list li, .achievements-legend-list li {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.ranks-legend-list li span, .achievements-legend-list li span {
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
