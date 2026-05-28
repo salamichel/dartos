@@ -369,9 +369,6 @@ function updateRuleDisplay(seasonId) {
   setBadge("rule-xpSerialWinner", season.xpBonusSerialWinner);
   setBadge("rule-xpBenjamin", season.xpBonusBenjamin);
 
-  const endEl = document.getElementById("lb-season-end");
-  if (endEl) endEl.textContent = seasonEndLabel(season);
-
   const bvrEl = document.getElementById("rule-bonusVainqueurParRang");
   if (bvrEl) bvrEl.style.display = season.bonusVainqueurParRang ? "block" : "none";
 }
@@ -429,10 +426,6 @@ function editSeason(s) {
   }
   const cbRang = document.getElementById("s-bonusVainqueurParRang");
   if (cbRang) cbRang.checked = !!s.bonusVainqueurParRang;
-  const startedAtEl = document.getElementById("s-startedAt");
-  if (startedAtEl) startedAtEl.value = s.startedAt ? new Date(s.startedAt).toISOString().slice(0, 10) : "";
-  const endedAtEl = document.getElementById("s-endedAt");
-  if (endedAtEl) endedAtEl.value = s.endedAt ? new Date(s.endedAt).toISOString().slice(0, 10) : "";
 
   document.getElementById("season-form").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -450,10 +443,6 @@ function resetSeasonForm() {
   }
   const cbRang = document.getElementById("s-bonusVainqueurParRang");
   if (cbRang) cbRang.checked = false;
-  const startedAtEl = document.getElementById("s-startedAt");
-  if (startedAtEl) startedAtEl.value = "";
-  const endedAtEl = document.getElementById("s-endedAt");
-  if (endedAtEl) endedAtEl.value = "";
 }
 
 document.getElementById("s-cancel").addEventListener("click", resetSeasonForm);
@@ -481,10 +470,6 @@ document.getElementById("season-form").addEventListener("submit", async (e) => {
   }
   const cbRang = document.getElementById("s-bonusVainqueurParRang");
   if (cbRang) payload.bonusVainqueurParRang = cbRang.checked;
-  const startedAtEl = document.getElementById("s-startedAt");
-  if (startedAtEl && startedAtEl.value) payload.startedAt = new Date(startedAtEl.value).toISOString();
-  const endedAtEl = document.getElementById("s-endedAt");
-  if (endedAtEl) payload.endedAt = endedAtEl.value ? new Date(endedAtEl.value).toISOString() : null;
 
   try {
     if (editingId) {
@@ -1016,10 +1001,6 @@ setInterval(() => {
   const seasonId = document.getElementById("lb-season").value;
   if (seasonId) {
     const season = seasons.find((s) => s.id == seasonId) || seasons[0];
-    if (season) {
-      const endEl = document.getElementById("lb-season-end");
-      if (endEl) endEl.textContent = seasonEndLabel(season);
-    }
   }
 }, 30000);
 
