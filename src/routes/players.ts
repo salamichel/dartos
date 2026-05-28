@@ -28,10 +28,15 @@ playersRouter.get("/", async (_req, res) => {
     include: {
       participations: {
         select: { xpEarned: true, medals: true }
+      },
+      guilds: {
+        include: {
+          guild: true
+        }
       }
     },
-    orderBy: { createdAt: "asc" }
-  });
+    orderBy: { createdAt: "asc" } 
+  });  
 
   const playersWithStats = players.map(p => {
     const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
