@@ -255,9 +255,43 @@ async function refreshSeasons() {
       sel.appendChild(opt);
     }
     if (prev) sel.value = prev;
+
+    // Logic for lb-season only: pre-select current season
+    if (id === "lb-season") {
+      const now = new Date();
+      let currentSeason = null;
+      let latestSeason = null;
+
+      for (const s of seasons) {
+        const startedAt = s.startedAt ? new Date(s.startedAt) : null;
+        const endedAt = s.endedAt ? new Date(s.endedAt) : null;
+
+        // Find the current season
+        if (startedAt && startedAt <= now && (!endedAt || endedAt >= now)) {
+          if (!currentSeason || startedAt > new Date(currentSeason.startedAt)) {
+            currentSeason = s;
+          }
+        }
+
+        // Keep track of the latest season for fallback
+        if (!latestSeason || (startedAt && startedAt > new Date(latestSeason.startedAt))) {
+            latestSeason = s;
+        }
+      }
+
+      if (currentSeason) {
+        sel.value = currentSeason.id;
+      } else if (latestSeason) { // Fallback to the latest season if no current one
+        sel.value = latestSeason.id;
+      } else {
+        // If no seasons exist, ensure no value is selected (or default to empty if option exists)
+        sel.value = "";
+      }
+    }
   }
 
   updateRuleDisplay(document.getElementById("lb-season").value);
+  refreshLeaderboard(); // Refresh leaderboard after season is selected and rules updated
 }
 
 function updateRuleDisplay(seasonId) {
