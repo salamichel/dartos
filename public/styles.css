@@ -787,6 +787,35 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
   gap: 0.5rem;
 }
 
+/* --- Styles pour les tableaux de données génériques (guildes, etc.) --- */
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table thead { display: none; }
+.data-table tbody tr {
+  display: block; background: var(--panel); margin-bottom: 0.8rem; padding: 1rem; border-radius: 16px;
+  border: 1px solid var(--border); position: relative;
+  transition: border-color 0.2s;
+}
+.data-table tbody tr:hover { border-color: var(--accent); }
+.data-table td { display: block; padding: 0.2rem 0; }
+.data-table td:nth-child(1) { font-size: 1.4rem; font-weight: 900; color: rgba(255,255,255,0.06); position: absolute; left: 1rem; top: 0.8rem; }
+.data-table td:nth-child(2) { margin-left: 2.2rem; font-weight: 800; font-size: 1.1rem; color: white; }
+.data-table td:nth-child(3) { margin-left: 2.2rem; font-size: 0.75rem; color: var(--muted); }
+/* La 4ème colonne du tableau des guildes doit être visible sur mobile */
+#guild-ranking-table td:nth-child(4) { display: block; margin-left: 2.2rem; font-size: 0.75rem; color: var(--muted); }
+
+@media (min-width: 768px) {
+  .data-table thead { display: table-header-group; background: var(--bg); }
+  .data-table thead th { padding: 0.6rem 1rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); text-align: left; border-bottom: 1px solid var(--border); }
+  .data-table tbody tr { display: table-row; background: transparent; border: none; border-radius: 0; padding: 0; margin: 0; }
+  .data-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .data-table td { display: table-cell; padding: 0.9rem 1rem; position: static; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .data-table td:nth-child(1) { font-size: 1rem; font-weight: 700; color: var(--text); position: static; }
+  .data-table td:nth-child(2) { margin: 0; }
+  .data-table td:nth-child(3) { display: table-cell; }
+  /* La 4ème colonne du tableau des guildes doit être visible sur desktop */
+  #guild-ranking-table td:nth-child(4) { display: table-cell; margin: 0; }
+}
+
 .guilds-help-legend summary:hover {
   color: #fff;
   text-shadow: 0 0 10px var(--accent);
