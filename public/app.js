@@ -369,9 +369,6 @@ function updateRuleDisplay(seasonId) {
   setBadge("rule-xpSerialWinner", season.xpBonusSerialWinner);
   setBadge("rule-xpBenjamin", season.xpBonusBenjamin);
 
-  const endEl = document.getElementById("lb-season-end");
-  if (endEl) endEl.textContent = seasonEndLabel(season);
-
   const bvrEl = document.getElementById("rule-bonusVainqueurParRang");
   if (bvrEl) bvrEl.style.display = season.bonusVainqueurParRang ? "block" : "none";
 }
@@ -1016,10 +1013,6 @@ setInterval(() => {
   const seasonId = document.getElementById("lb-season").value;
   if (seasonId) {
     const season = seasons.find((s) => s.id == seasonId) || seasons[0];
-    if (season) {
-      const endEl = document.getElementById("lb-season-end");
-      if (endEl) endEl.textContent = seasonEndLabel(season);
-    }
   }
 }, 30000);
 
