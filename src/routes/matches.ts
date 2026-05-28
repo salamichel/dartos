@@ -4,6 +4,29 @@ import { recordMatchSchema } from "../schemas";
 import { calculateMatchResults, FinishType } from "../scoring";
 import { requireAdminPassword } from "../middleware";
 
+async function countConsecutiveWinsBefore(
+  playerId: number,
+  seasonId: number,
+  beforeDate: Date,
+  excludeMatchId?: number
+): Promise<number> {
+  const previousParticipations = await prisma.matchParticipant.findMany({
+    where: {
+      playerId,
+      match: { seasonId, playedAt: { lt: beforeDate } },
+      ...(excludeMatchId !== undefined ? { matchId: { not: excludeMatchId } } : {}),
+    },
+    include: { match: { select: { playedAt: true } } },
+    orderBy: { match: { playedAt: "desc" } },
+  });
+  let count = 0;
+  for (const p of previousParticipations) {
+    if (p.rank === 1) count++;
+    else break;
+  }
+  return count;
+}
+
 export const matchesRouter = Router();
 
 // POST /matches — record a finished match.
@@ -71,12 +94,22 @@ matchesRouter.post("/", async (req, res) => {
     xpBonusJackpot: season.xpBonusJackpot,
     xpBonusEgalite: season.xpBonusEgalite,
     xpBonusTueurDeGeants: season.xpBonusTueurDeGeants,
+    xpBonusPhenix: season.xpBonusPhenix,
+    xpBonusSerialWinner: season.xpBonusSerialWinner,
+    xpBonusBenjamin: season.xpBonusBenjamin,
+    bonusVainqueurParRang: season.bonusVainqueurParRang,
   };
 
   const loserXPBeforeMap = new Map<number, number>();
   losers.forEach(l => {
     loserXPBeforeMap.set(l.playerId, playerXPBefore.get(l.playerId) || 0);
   });
+
+  const winnerConsecutiveWinsBefore = await countConsecutiveWinsBefore(
+    winner.playerId,
+    seasonId,
+    playedAt ?? new Date()
+  );
 
   const results = calculateMatchResults(
     winner.playerId,
@@ -85,7 +118,8 @@ matchesRouter.post("/", async (req, res) => {
     playerLevels.get(winner.playerId) || 0,
     config,
     playerXPBefore.get(winner.playerId) || 0,
-    loserXPBeforeMap
+    loserXPBeforeMap,
+    winnerConsecutiveWinsBefore
   );
 
   const match = await prisma.match.create({
@@ -197,12 +231,23 @@ matchesRouter.put("/:id", requireAdminPassword, async (req, res) => {
     xpBonusJackpot: season.xpBonusJackpot,
     xpBonusEgalite: season.xpBonusEgalite,
     xpBonusTueurDeGeants: season.xpBonusTueurDeGeants,
+    xpBonusPhenix: season.xpBonusPhenix,
+    xpBonusSerialWinner: season.xpBonusSerialWinner,
+    xpBonusBenjamin: season.xpBonusBenjamin,
+    bonusVainqueurParRang: season.bonusVainqueurParRang,
   };
 
   const loserXPBeforeMap = new Map<number, number>();
   losers.forEach(l => {
     loserXPBeforeMap.set(l.playerId, playerXPBefore.get(l.playerId) || 0);
   });
+
+  const winnerConsecutiveWinsBefore = await countConsecutiveWinsBefore(
+    winner.playerId,
+    seasonId,
+    playedAt ?? match.playedAt,
+    id
+  );
 
   const results = calculateMatchResults(
     winner.playerId,
@@ -211,7 +256,8 @@ matchesRouter.put("/:id", requireAdminPassword, async (req, res) => {
     playerLevels.get(winner.playerId) || 0,
     config,
     playerXPBefore.get(winner.playerId) || 0,
-    loserXPBeforeMap
+    loserXPBeforeMap,
+    winnerConsecutiveWinsBefore
   );
 
   const updatedMatch = await prisma.$transaction(async (tx) => {

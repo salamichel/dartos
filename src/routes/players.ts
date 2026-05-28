@@ -24,7 +24,7 @@ playersRouter.post("/", async (req, res) => {
 });
 
 playersRouter.get("/", async (_req, res) => {
-  const players = await prisma.player.findMany({ 
+  const players = await prisma.player.findMany({
     include: {
       participations: {
         select: { xpEarned: true, medals: true }
@@ -36,10 +36,16 @@ playersRouter.get("/", async (_req, res) => {
       }
     },
     orderBy: { createdAt: "asc" } 
-  });
-  
+  });  
+
   const playersWithStats = players.map(p => {
     const totalXP = p.participations.reduce((sum, part) => sum + part.xpEarned, 0);
+    const badges: Record<string, number> = {};
+    for (const part of p.participations) {
+      for (const m of part.medals) {
+        badges[m] = (badges[m] ?? 0) + 1;
+      }
+    }
     const clampedXP = Math.max(0, totalXP);
     const totalBadgesCount = p.participations.reduce((sum, part) => sum + part.medals.length, 0);
     const uniqueMedals = Array.from(new Set(p.participations.flatMap(part => part.medals)));
@@ -49,6 +55,7 @@ playersRouter.get("/", async (_req, res) => {
       id: p.id,
       name: p.name,
       matchCount: p.participations.length,
+      badges,
       totalXP: clampedXP,
       totalBadgesCount,
       uniqueMedals,

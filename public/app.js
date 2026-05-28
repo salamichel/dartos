@@ -56,6 +56,49 @@ const api = {
 let players = [];
 let seasons = [];
 
+const MEDALS_MAP = {
+  POULIDOR: "🥈",
+  JACKPOT: "🎰",
+  EGALITE: "🤝",
+  TUEUR_DE_GEANTS: "⚔️🏆",
+  PHENIX: "🔥",
+  SERIAL_WINNER: "🔥🔥",
+  BENJAMIN: "🥉",
+};
+
+function daysUntil(endedAt) {
+  if (!endedAt) return null;
+  const end = new Date(endedAt).getTime();
+  const now = Date.now();
+  return Math.ceil((end - now) / 86400000);
+}
+
+function seasonEndLabel(s) {
+  if (!s.endedAt) return "⏱️ Saison en cours (sans date de fin)";
+  const end = new Date(s.endedAt).getTime();
+  const now = Date.now();
+  const ms = end - now;
+
+  if (ms < 0) {
+    const past = Math.ceil(-ms / 86400000);
+    return `✅ Saison terminée il y a ${past} jour${past > 1 ? "s" : ""}`;
+  }
+
+  const days = Math.floor(ms / 86400000);
+  const hours = Math.floor((ms % 86400000) / 3600000);
+  const mins = Math.floor((ms % 3600000) / 60000);
+
+  if (days > 0) {
+    return `⏳ Se termine dans ${days}j ${hours}h`;
+  } else if (hours > 0) {
+    return `⏳ Se termine dans ${hours}h ${mins}min`;
+  } else if (mins > 0) {
+    return `⏳ Se termine dans ${mins} minutes`;
+  } else {
+    return "🔔 Se termine dans moins d'une minute !";
+  }
+}
+
 const LEVELS = [
   { title: "Pousse-Caillou", minXP: 0 },
   { title: "Lanceur du Dimanche", minXP: 500 },
@@ -144,10 +187,17 @@ async function refreshPlayers() {
 
   for (const p of players) {
     const li = document.createElement("li");
+    const badgesEntries = Object.entries(p.badges || {});
+    const badgesHtml = badgesEntries.length
+      ? `<span class="player-badges">${badgesEntries
+          .map(([name, count]) => `<span class="medal-icon" title="${name}">${MEDALS_MAP[name] || name}${count > 1 ? `×${count}` : ""}</span>`)
+          .join("")}</span>`
+      : "";
     li.innerHTML = `
       <div class="player-info">
         <strong>${escapeHtml(p.name)}</strong>
-        <span class="muted">${p.totalXP} XP</span>
+        <span class="muted">${p.matchCount} match${p.matchCount !== 1 ? "s" : ""} · ${p.totalXP} XP</span>
+        ${badgesHtml}
       </div>
       <button class="muted small edit-player" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Modifier</button>
     `;
@@ -202,13 +252,13 @@ async function refreshSeasons() {
 
   for (const s of seasons) {
     const li = document.createElement("li");
-    const startDate = s.startedAt ? new Date(s.startedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "Non définie";
-    const endDate = s.endedAt ? new Date(s.endedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "Non définie";
-    const dateDisplay = `Du ${startDate} au ${endDate}`;
+    const date = new Date(s.startedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    const endLabel = seasonEndLabel(s);
     li.innerHTML = `
       <div>
         <span style="font-weight:700">${escapeHtml(s.name)}</span>
-        <span class="muted" style="font-size:0.78rem;display:block">${dateDisplay}</span>
+        <span class="muted" style="font-size:0.78rem;display:block">Depuis le ${date}</span>
+        <span class="muted" style="font-size:0.78rem;display:block">${endLabel}</span>
       </div>
       <div style="display:flex;gap:0.4rem">
         <button class="edit-season small muted" data-id="${s.id}" style="width:auto">✏️ Modifier</button>
@@ -304,10 +354,26 @@ function updateRuleDisplay(seasonId) {
   document.getElementById("rule-xpVampire").textContent = season.xpVampireMultiplier;
   document.getElementById("rule-xpSurvivor").textContent = season.xpSurvivorBase;
 
-  document.getElementById("rule-xpPoulidor").textContent = season.xpBonusPoulidor;
-  document.getElementById("rule-xpJackpot").textContent = season.xpBonusJackpot;
-  document.getElementById("rule-xpEgalite").textContent = season.xpBonusEgalite;
-  document.getElementById("rule-xpTueur").textContent = season.xpBonusTueurDeGeants;
+  const setBadge = (spanId, value) => {
+    const el = document.getElementById(spanId);
+    if (!el) return;
+    el.textContent = value;
+    const li = el.closest("li");
+    if (li) li.style.display = value > 0 ? "" : "none";
+  };
+  setBadge("rule-xpPoulidor", season.xpBonusPoulidor);
+  setBadge("rule-xpJackpot", season.xpBonusJackpot);
+  setBadge("rule-xpEgalite", season.xpBonusEgalite);
+  setBadge("rule-xpTueur", season.xpBonusTueurDeGeants);
+  setBadge("rule-xpPhenix", season.xpBonusPhenix);
+  setBadge("rule-xpSerialWinner", season.xpBonusSerialWinner);
+  setBadge("rule-xpBenjamin", season.xpBonusBenjamin);
+
+  const endEl = document.getElementById("lb-season-end");
+  if (endEl) endEl.textContent = seasonEndLabel(season);
+
+  const bvrEl = document.getElementById("rule-bonusVainqueurParRang");
+  if (bvrEl) bvrEl.style.display = season.bonusVainqueurParRang ? "block" : "none";
 }
 
 const SEASON_DEFAULTS = {
@@ -321,6 +387,10 @@ const SEASON_DEFAULTS = {
   xpBonusJackpot: 20,
   xpBonusEgalite: 10,
   xpBonusTueurDeGeants: 50,
+  xpBonusPhenix: 30,
+  xpBonusSerialWinner: 40,
+  xpBonusBenjamin: 15,
+  bonusVainqueurParRang: false,
 };
 
 const SEASON_FIELD_MAP = {
@@ -334,6 +404,9 @@ const SEASON_FIELD_MAP = {
   xpBonusJackpot: "s-xpJackpot",
   xpBonusEgalite: "s-xpEgalite",
   xpBonusTueurDeGeants: "s-xpTueur",
+  xpBonusPhenix: "s-xpPhenix",
+  xpBonusSerialWinner: "s-xpSerialWinner",
+  xpBonusBenjamin: "s-xpBenjamin",
 };
 
 function formatDateForInput(dateStr) {
@@ -354,6 +427,12 @@ function editSeason(s) {
     const el = document.getElementById(id);
     if (el && s[key] !== undefined) el.value = s[key];
   }
+  const cbRang = document.getElementById("s-bonusVainqueurParRang");
+  if (cbRang) cbRang.checked = !!s.bonusVainqueurParRang;
+  const startedAtEl = document.getElementById("s-startedAt");
+  if (startedAtEl) startedAtEl.value = s.startedAt ? new Date(s.startedAt).toISOString().slice(0, 10) : "";
+  const endedAtEl = document.getElementById("s-endedAt");
+  if (endedAtEl) endedAtEl.value = s.endedAt ? new Date(s.endedAt).toISOString().slice(0, 10) : "";
 
   document.getElementById("season-form").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -369,6 +448,12 @@ function resetSeasonForm() {
     const el = document.getElementById(id);
     if (el) el.value = SEASON_DEFAULTS[key] ?? "";
   }
+  const cbRang = document.getElementById("s-bonusVainqueurParRang");
+  if (cbRang) cbRang.checked = false;
+  const startedAtEl = document.getElementById("s-startedAt");
+  if (startedAtEl) startedAtEl.value = "";
+  const endedAtEl = document.getElementById("s-endedAt");
+  if (endedAtEl) endedAtEl.value = "";
 }
 
 document.getElementById("s-cancel").addEventListener("click", resetSeasonForm);
@@ -394,6 +479,12 @@ document.getElementById("season-form").addEventListener("submit", async (e) => {
     const el = document.getElementById(id);
     if (el && el.value !== "") payload[key] = Number(el.value);
   }
+  const cbRang = document.getElementById("s-bonusVainqueurParRang");
+  if (cbRang) payload.bonusVainqueurParRang = cbRang.checked;
+  const startedAtEl = document.getElementById("s-startedAt");
+  if (startedAtEl && startedAtEl.value) payload.startedAt = new Date(startedAtEl.value).toISOString();
+  const endedAtEl = document.getElementById("s-endedAt");
+  if (endedAtEl) payload.endedAt = endedAtEl.value ? new Date(endedAtEl.value).toISOString() : null;
 
   try {
     if (editingId) {
@@ -628,17 +719,10 @@ function showMatchSummary(match) {
 
   document.getElementById("modal-winner-name").textContent = winner.player.name;
 
-  const medalsMap = {
-    POULIDOR: "🥈",
-    JACKPOT: "🎰",
-    EGALITE: "🤝",
-    TUEUR_DE_GEANTS: "⚔️🏆",
-  };
-
   sorted.forEach((p) => {
     const row = document.createElement("div");
     row.className = "modal-row" + (p.rank === 1 ? " winner" : "");
-    const medalsHtml = (p.medals || []).map((m) => `<span>${medalsMap[m] || m}</span>`).join(" ");
+    const medalsHtml = (p.medals || []).map((m) => `<span>${MEDALS_MAP[m] || m}</span>`).join(" ");
     row.innerHTML = `
       <div class="modal-player">
         <span class="name">${escapeHtml(p.player.name)}</span>
@@ -684,8 +768,7 @@ async function refreshMatchesList() {
         .map((p) => {
           const detail = p.rank === 1 ? ` · Finition ${p.finishType}` : ` · Reste ${p.scoreLeft} pts`;
           const xp = `<span class="xp-gain plus">+${p.xpEarned} XP</span>`;
-          const medalsMap = { POULIDOR: "🥈", JACKPOT: "🎰", EGALITE: "🤝", TUEUR_DE_GEANTS: "⚔️🏆" };
-          const medalsHtml = (p.medals || []).map((m) => `<span class="medal-icon" title="${m}">${medalsMap[m] || m}</span>`).join("");
+          const medalsHtml = (p.medals || []).map((m) => `<span class="medal-icon" title="${m}">${MEDALS_MAP[m] || m}</span>`).join("");
           return `<li><span class="match-li-left"><strong>${p.rank === 1 ? "🏆" : p.rank + "."}</strong> ${escapeHtml(p.player.name)}<span class="muted" style="font-size:0.8rem">${detail}</span></span><span class="match-li-right">${xp}${medalsHtml}</span></li>`;
         })
         .join("");
@@ -928,6 +1011,17 @@ document.getElementById("lb-season").addEventListener("change", () => {
   refreshLeaderboard();
   updateRuleDisplay(document.getElementById("lb-season").value);
 });
+
+setInterval(() => {
+  const seasonId = document.getElementById("lb-season").value;
+  if (seasonId) {
+    const season = seasons.find((s) => s.id == seasonId) || seasons[0];
+    if (season) {
+      const endEl = document.getElementById("lb-season-end");
+      if (endEl) endEl.textContent = seasonEndLabel(season);
+    }
+  }
+}, 30000);
 
 document.getElementById("lb-recalculate").addEventListener("click", async () => {
   const seasonId = document.getElementById("lb-season").value;

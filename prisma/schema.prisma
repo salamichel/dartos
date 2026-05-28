@@ -41,6 +41,10 @@ model Season {
   xpBonusJackpot         Int @default(20) @map("xp_bonus_jackpot")
   xpBonusEgalite         Int @default(10) @map("xp_bonus_egalite")
   xpBonusTueurDeGeants   Int @default(50) @map("xp_bonus_tueur_de_geants")
+  xpBonusPhenix          Int @default(0)  @map("xp_bonus_phenix")
+  xpBonusSerialWinner    Int @default(0)  @map("xp_bonus_serial_winner")
+  xpBonusBenjamin        Int @default(0)  @map("xp_bonus_benjamin")
+  bonusVainqueurParRang  Boolean @default(false) @map("bonus_vainqueur_par_rang")
 
   matches   Match[]
 

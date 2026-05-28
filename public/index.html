@@ -37,6 +37,7 @@
         </label>
         <button id="lb-refresh">Rafraîchir</button>
         <button id="lb-recalculate" class="muted small">Recalculer Saison</button>
+        <span id="lb-season-end" class="muted" style="font-size:0.8rem;font-weight:bold"></span>
       </div>
 
       <table id="lb-table">
@@ -87,7 +88,11 @@
             <li>🎰 <strong>Jackpot</strong> : +<span id="rule-xpJackpot">20</span> XP (Score miroir : 11, 22...)</li>
             <li>🤝 <strong>Égalité</strong> : +<span id="rule-xpEgalite">10</span> XP (Même score qu'un autre)</li>
             <li>⚔️🏆 <strong>Tueur de Géants</strong> : +<span id="rule-xpTueur">50</span> XP (Bat un plus haut niveau)</li>
+            <li>🔥 <strong>Phénix</strong> : +<span id="rule-xpPhenix">0</span> XP (Outsider qui gagne)</li>
+            <li>🔥🔥 <strong>Serial Winner</strong> : +<span id="rule-xpSerialWinner">0</span> XP (3ᵉ victoire d'affilée)</li>
+            <li>🥉 <strong>Benjamin</strong> : +<span id="rule-xpBenjamin">0</span> XP (Dernier mais proche du finish)</li>
           </ul>
+          <p id="rule-bonusVainqueurParRang" class="muted" style="font-size:0.85rem;display:none">⚖️ Bonus vainqueur pondéré par palier actif (−25% par palier d'écart, plancher 0)</p>
         </div>
         
         <p class="levels-info">Niveaux individuels : Pousse-Caillou (0) • Lanceur du Dimanche (500) • Sniper de Comptoir (2000) • Maître du 301 (5000) • Phil Taylor (10000).</p>
@@ -242,12 +247,14 @@
       <form id="season-form">
         <input type="hidden" id="s-editing-id" />
         <input type="text" id="s-name" placeholder="Nom de la saison" required maxlength="64" />
-        <label>Date de début (optionnel)
-          <input type="datetime-local" id="s-startedAt" />
-        </label>
-        <label>Date de fin (optionnel)
-          <input type="datetime-local" id="s-endedAt" />
-        </label>
+        <div class="rules-config">
+          <label>📅 Début
+            <input type="datetime-local" id="s-startedAt" />
+          </label>
+          <label>🏁 Fin (optionnel)
+            <input type="datetime-local" id="s-endedAt" />
+          </label>
+        </div>
         <div class="rules-config">
           <label>⚔️ XP par adversaire
             <input type="number" id="s-xpOpponent" value="50" />
@@ -282,6 +289,22 @@
           </label>
           <label>⚔️🏆 Tueur de Géants
             <input type="number" id="s-xpTueur" value="50" />
+          </label>
+          <label>🔥 Phénix
+            <input type="number" id="s-xpPhenix" value="30" />
+          </label>
+          <label>🔥🔥 Serial Winner
+            <input type="number" id="s-xpSerialWinner" value="40" />
+          </label>
+          <label>🥉 Benjamin
+            <input type="number" id="s-xpBenjamin" value="15" />
+          </label>
+        </div>
+        <h3>⚖️ Règles avancées</h3>
+        <div class="rules-config">
+          <label class="checkbox-label" style="flex-direction:row;align-items:center;gap:0.5rem;cursor:pointer">
+            <input type="checkbox" id="s-bonusVainqueurParRang" />
+            Bonus vainqueur pondéré par palier de niveau (−25% par palier d'écart)
           </label>
         </div>
         <div class="actions" style="display:flex;gap:0.5rem">
