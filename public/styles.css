@@ -724,9 +724,7 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
 .add-member-control select {
   width: 100%;
   padding: 0.5rem;
-  background: rgba(255, 255, 255, 0.03);
   border: 1px dashed rgba(255, 255, 255, 0.15);
-  color: var(--muted);
   border-radius: 8px;
   font-size: 0.8rem;
   cursor: pointer;
@@ -735,8 +733,6 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
 
 .add-member-control select:hover {
   border-color: var(--guild-accent);
-  color: #fff;
-  background: var(--guild-accent)05;
 }
 
 /* Leaderboard Mini Guild Badges */
