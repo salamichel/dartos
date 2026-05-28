@@ -426,11 +426,7 @@ function editSeason(s) {
   }
   const cbRang = document.getElementById("s-bonusVainqueurParRang");
   if (cbRang) cbRang.checked = !!s.bonusVainqueurParRang;
-  const startedAtEl = document.getElementById("s-startedAt");
-  if (startedAtEl) startedAtEl.value = s.startedAt ? new Date(s.startedAt).toISOString().slice(0, 10) : "";
-  const endedAtEl = document.getElementById("s-endedAt");
-  if (endedAtEl) endedAtEl.value = s.endedAt ? new Date(s.endedAt).toISOString().slice(0, 10) : "";
-
+  
   document.getElementById("season-form").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -446,11 +442,7 @@ function resetSeasonForm() {
     if (el) el.value = SEASON_DEFAULTS[key] ?? "";
   }
   const cbRang = document.getElementById("s-bonusVainqueurParRang");
-  if (cbRang) cbRang.checked = false;
-  const startedAtEl = document.getElementById("s-startedAt");
-  if (startedAtEl) startedAtEl.value = "";
-  const endedAtEl = document.getElementById("s-endedAt");
-  if (endedAtEl) endedAtEl.value = "";
+  if (cbRang) cbRang.checked = false;  
 }
 
 document.getElementById("s-cancel").addEventListener("click", resetSeasonForm);
@@ -477,11 +469,7 @@ document.getElementById("season-form").addEventListener("submit", async (e) => {
     if (el && el.value !== "") payload[key] = Number(el.value);
   }
   const cbRang = document.getElementById("s-bonusVainqueurParRang");
-  if (cbRang) payload.bonusVainqueurParRang = cbRang.checked;
-  const startedAtEl = document.getElementById("s-startedAt");
-  if (startedAtEl && startedAtEl.value) payload.startedAt = new Date(startedAtEl.value).toISOString();
-  const endedAtEl = document.getElementById("s-endedAt");
-  if (endedAtEl) payload.endedAt = endedAtEl.value ? new Date(endedAtEl.value).toISOString() : null;
+  if (cbRang) payload.bonusVainqueurParRang = cbRang.checked;  
 
   try {
     if (editingId) {
