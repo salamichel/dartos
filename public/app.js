@@ -1145,7 +1145,7 @@ async function refreshGuilds() {
             <td><strong>${idx + 1}</strong></td>
             <td>
               <div style="display:flex;align-items:center;gap:0.5rem">
-                <span class="player-mini-guild-badge" style="background-color: ${g.badgeColor}; font-size: 1.2rem; padding: 0.2rem 0.4rem; border-radius: 4px;" title="${escapeHtml(g.name)}">${escapeHtml(g.badgeIcon)}</span>
+                <span class="player-mini-guild-badge" style="background-color: ${g.badgeColor}; width: auto; height: auto; font-size: 1.2rem; padding: 0.2rem 0.4rem; border-radius: 4px;" title="${escapeHtml(g.name)}">${escapeHtml(g.badgeIcon)}</span>
                 <strong>${escapeHtml(g.name)}</strong>
               </div>
             </td>
