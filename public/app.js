@@ -945,9 +945,7 @@ async function refreshLeaderboard() {
           </div>
         </td>
         <td>
-          <div class="lb-stats">
-            <span>${matchCountVal} match${matchCountVal !== 1 ? "s" : ""}</span>
-          </div>
+          &nbsp;
         </td>
         <td><strong>${r.totalXP} XP</strong></td>
         <td>
