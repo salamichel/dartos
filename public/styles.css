@@ -882,7 +882,6 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
   background: rgba(62, 207, 142, 0.1);
   padding: 0.2rem 0.6rem;
   border-radius: 8px;
-  border: 1px solid rgba(62, 207, 142, 0.2);
 }
 
 /* La 4ème colonne du tableau des guildes doit être visible sur mobile */
