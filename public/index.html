@@ -120,14 +120,28 @@
           <input type="datetime-local" id="m-playedAt" />
         </label>
 
-        <h3>Participants</h3>
-        <p class="muted">Le premier joueur est le vainqueur. Chaque perdant doit indiquer son score restant au moment de la victoire (Mort Subite).</p>
-        <div id="m-participants"></div>
-        <button type="button" id="m-add">+ Ajouter un participant</button>
-
-        <div class="actions">
-          <button type="submit">Enregistrer le match</button>
+        <div id="m-step-1">
+          <h3>1. Qui a joué ?</h3>
+          <p class="muted">Sélectionnez tous les participants de la partie.</p>
+          <div id="m-participants-select"></div>
+          <button type="button" id="m-add-participant">+ Ajouter un participant</button>
+          
+          <div class="actions" style="margin-top: 2rem;">
+            <button type="button" id="m-next-step" class="primary">Suivant : Saisir les scores ➔</button>
+          </div>
         </div>
+
+        <div id="m-step-2" class="hidden">
+          <h3>2. Scores & Résultats</h3>
+          <p class="muted">Le premier joueur est le vainqueur. Indiquez le score restant pour les autres.</p>
+          <div id="m-participants-scores"></div>
+          
+          <div class="actions" style="margin-top: 2rem; display: flex; gap: 1rem;">
+            <button type="button" id="m-prev-step" class="muted">⇠ Retour</button>
+            <button type="submit">Enregistrer le match</button>
+          </div>
+        </div>
+
         <p id="m-status" class="status"></p>
       </form>
     </section>
