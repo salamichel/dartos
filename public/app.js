@@ -492,8 +492,11 @@ document.getElementById("season-form").addEventListener("submit", async (e) => {
 });
 
 // ----- Match form -----
-const participantsSelectEl = document.getElementById("m-participants-select");
-const participantsScoresEl = document.getElementById("m-participants-scores");
+const playersGridEl = document.getElementById("m-players-grid");
+const selectedListEl = document.getElementById("m-selected-list");
+const submitQuickBtn = document.getElementById("m-submit-quick");
+
+let selectedPlayerIds = [];
 
 function addNewPlayerInline(btn, selectEl) {
   const wrap = btn.closest(".p-select-wrap");
@@ -543,134 +546,80 @@ function addNewPlayerInline(btn, selectEl) {
   });
 }
 
-function addParticipantSelectRow(playerId = "") {
-  const row = document.createElement("div");
-  row.className = "participant-select-row";
-  row.innerHTML = `
-    <div class="p-select-wrap">
-      <select class="p-select" required></select>
-      <button type="button" class="new-player-btn">➕ Nouveau joueur</button>
-    </div>
-    <button type="button" class="remove" title="Supprimer">×</button>
-  `;
-
-  const sel = row.querySelector(".p-select");
-  row.querySelector(".new-player-btn").addEventListener("click", (e) => {
-    e.preventDefault();
-    addNewPlayerInline(e.currentTarget, sel);
-  });
-
-  row.querySelector(".remove").addEventListener("click", () => {
-    if (participantsSelectEl.children.length > 2) {
-      row.remove();
-      checkDuplicatePlayers();
-    } else {
-      showToast("Il faut au moins 2 joueurs", "err");
-    }
-  });
-
-  participantsSelectEl.appendChild(row);
-  refreshParticipantOptions();
-  if (playerId) sel.value = playerId;
-}
-
 function refreshParticipantOptions() {
-  const selects = participantsSelectEl.querySelectorAll(".p-select");
-  selects.forEach((sel) => {
-    const prev = sel.value;
-    sel.innerHTML = '<option value="">— choisir —</option>';
-    for (const p of players) {
-      const opt = document.createElement("option");
-      opt.value = p.id;
-      opt.textContent = p.name;
-      sel.appendChild(opt);
-    }
-    if (prev) sel.value = prev;
-  });
-
-  selects.forEach((sel) => {
-    sel.addEventListener("change", checkDuplicatePlayers, { once: false });
-  });
-}
-
-function checkDuplicatePlayers() {
-  const selects = [...participantsSelectEl.querySelectorAll(".p-select")];
-  const values = selects.map((s) => s.value).filter(Boolean);
-  const hasDup = values.length !== new Set(values).size;
-  const status = document.getElementById("m-status");
-  if (hasDup) {
-    setStatus(status, "⚠️ Un joueur est sélectionné plusieurs fois", false);
-    return true;
-  } else if (status.textContent.startsWith("⚠️")) {
-    status.textContent = "";
-    status.className = "status";
-  }
-  return false;
-}
-
-document.getElementById("m-add-participant").addEventListener("click", () => addParticipantSelectRow());
-
-document.getElementById("m-next-step").addEventListener("click", () => {
-  const selects = [...participantsSelectEl.querySelectorAll(".p-select")];
-  const playerIds = selects.map(s => s.value).filter(Boolean);
+  playersGridEl.innerHTML = "";
+  // Sort players by totalXP descending for the grid
+  const sortedPlayers = [...players].sort((a, b) => b.totalXP - a.totalXP);
   
-  if (playerIds.length < 2) {
-    return showToast("Sélectionnez au moins 2 joueurs", "err");
-  }
-  if (checkDuplicatePlayers()) return;
+  sortedPlayers.forEach(p => {
+    const card = document.createElement("div");
+    card.className = "quick-player-card" + (selectedPlayerIds.includes(p.id) ? " selected" : "");
+    card.innerHTML = `<span class="p-name">${escapeHtml(p.name)}</span>`;
+    card.addEventListener("click", () => togglePlayerSelection(p.id));
+    playersGridEl.appendChild(card);
+  });
+}
 
-  // Build step 2
-  participantsScoresEl.innerHTML = "";
-  playerIds.forEach((id, i) => {
-    const player = players.find(p => p.id == id);
+function togglePlayerSelection(playerId) {
+  const idx = selectedPlayerIds.indexOf(playerId);
+  if (idx > -1) {
+    selectedPlayerIds.splice(idx, 1);
+  } else {
+    selectedPlayerIds.push(playerId);
+  }
+  renderSelectedList();
+  refreshParticipantOptions();
+}
+
+function renderSelectedList() {
+  selectedListEl.innerHTML = "";
+  selectedPlayerIds.forEach((id, i) => {
+    const player = players.find(p => p.id === id);
     const row = document.createElement("div");
-    row.className = "participant-score-row" + (i === 0 ? " winner-row" : "");
+    row.className = "selected-participant-row" + (i === 0 ? " winner" : "");
     row.dataset.playerId = id;
 
     if (i === 0) {
       row.innerHTML = `
         <div class="rank">🏆</div>
-        <div class="p-name"><strong>${escapeHtml(player.name)}</strong></div>
+        <div class="p-name">${escapeHtml(player.name)}</div>
         <select class="p-finish" title="Finition">
-          <option value="SIMPLE">Finition SIMPLE</option>
-          <option value="DOUBLE">Finition DOUBLE ✖️2</option>
-          <option value="TRIPLE">Finition TRIPLE / BULLE ✖️3</option>
+          <option value="SIMPLE">SIMPLE</option>
+          <option value="DOUBLE">✖️2</option>
+          <option value="TRIPLE">✖️3</option>
         </select>
       `;
     } else {
       row.innerHTML = `
         <div class="rank">💀</div>
-        <div class="p-name"><strong>${escapeHtml(player.name)}</strong></div>
-        <input type="number" class="p-score" placeholder="Score restant" min="1" max="301" required />
+        <div class="p-name">${escapeHtml(player.name)}</div>
+        <input type="number" class="p-score" placeholder="Score" min="1" max="301" required />
       `;
+      // Focus score if it's the last added
+      if (i === selectedPlayerIds.length - 1) {
+        setTimeout(() => row.querySelector("input").focus(), 0);
+      }
     }
-    participantsScoresEl.appendChild(row);
+    selectedListEl.appendChild(row);
   });
-
-  document.getElementById("m-step-1").classList.add("hidden");
-  document.getElementById("m-step-2").classList.remove("hidden");
-});
-
-document.getElementById("m-prev-step").addEventListener("click", () => {
-  document.getElementById("m-step-2").classList.add("hidden");
-  document.getElementById("m-step-1").classList.remove("hidden");
-});
+  submitQuickBtn.disabled = selectedPlayerIds.length < 2;
+}
 
 document.getElementById("match-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const status = document.getElementById("m-status");
-  const btn = e.submitter || e.target.querySelector('[type="submit"]');
+  const btn = submitQuickBtn;
   const matchId = document.getElementById("m-id").value;
   const playedAtRaw = document.getElementById("m-playedAt").value;
-  const scoreRows = [...participantsScoresEl.querySelectorAll(".participant-score-row")];
+  const rows = [...selectedListEl.querySelectorAll(".selected-participant-row")];
 
-  if (scoreRows.length < 2) return; // Should not happen
+  if (rows.length < 2) return;
 
-  const winnerRow = scoreRows[0];
+  const winnerRow = rows[0];
   const winnerId = Number(winnerRow.dataset.playerId);
   const finishType = winnerRow.querySelector(".p-finish").value;
 
-  const losers = scoreRows.slice(1).map((row) => ({
+  const losers = rows.slice(1).map((row) => ({
     playerId: Number(row.dataset.playerId),
     scoreLeft: Number(row.querySelector(".p-score").value),
   }));
@@ -695,11 +644,11 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
     }
     showMatchSummary(result);
     
-    // Reset to step 1
-    document.getElementById("m-step-2").classList.add("hidden");
-    document.getElementById("m-step-1").classList.remove("hidden");
+    // Clear selection after success
+    selectedPlayerIds = [];
+    renderSelectedList();
+    refreshParticipantOptions();
     status.textContent = "";
-    // Note: participants selected in step 1 remain for next entry, which is often desired
   } catch (err) {
     setStatus(status, err.message, false);
   } finally {
@@ -807,29 +756,23 @@ function editMatch(m) {
   document.getElementById("m-playedAt").value = new Date(m.playedAt).toISOString().slice(0, 16);
   document.getElementById("match-form-title").textContent = "Modifier le match #" + m.id;
 
-  participantsSelectEl.innerHTML = "";
   const sorted = [...m.participants].sort((a, b) => a.rank - b.rank);
-  sorted.forEach((p) => {
-    addParticipantSelectRow(p.playerId);
-  });
-
-  // Automatically go to step 2 for editing
-  document.getElementById("m-step-1").classList.remove("hidden");
-  document.getElementById("m-step-2").classList.add("hidden");
+  selectedPlayerIds = sorted.map(p => p.playerId);
   
-  document.querySelector('button[data-tab="match"]').click();
+  renderSelectedList();
+  refreshParticipantOptions();
   
-  // Trigger "Next" to fill scores
+  // Fill scores/finish
   setTimeout(() => {
-    document.getElementById("m-next-step").click();
-    // Fill scores after step 2 is built
-    const scoreRows = [...participantsScoresEl.querySelectorAll(".participant-score-row")];
+    const rows = [...selectedListEl.querySelectorAll(".selected-participant-row")];
     sorted.forEach((p, i) => {
-      const row = scoreRows[i];
+      const row = rows[i];
       if (p.rank === 1) row.querySelector(".p-finish").value = p.finishType;
       else row.querySelector(".p-score").value = p.scoreLeft;
     });
   }, 0);
+
+  document.querySelector('button[data-tab="match"]').click();
 }
 
 document.getElementById("ml-refresh").addEventListener("click", refreshMatchesList);
@@ -1057,9 +1000,8 @@ function onTabShow(tab) {
   
   if (tab === "matches") {
     refreshMatchesList();
-  } else if (tab === "match" && participantsSelectEl.children.length === 0) {
-    addParticipantSelectRow();
-    addParticipantSelectRow();
+  } else if (tab === "match") {
+    refreshParticipantOptions();
   } else if (tab === "guilds") {
     refreshGuilds();
   }
@@ -1395,8 +1337,6 @@ async function ensureAdminPassword() {
   updateLockBtn();
   await refreshPlayers();
   await refreshSeasons();
-  addParticipantSelectRow();
-  addParticipantSelectRow();
   await refreshLeaderboard();
   renderLevelsLegend();
 })();
