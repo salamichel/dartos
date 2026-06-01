@@ -18,6 +18,7 @@
       <button data-tab="match">⚔️ Saisir</button>
       <button data-tab="matches">📜 Matchs</button>
       <button data-tab="players">👤 Joueurs</button>
+      <button data-tab="guilds">🛡️ Guildes</button>
       <button data-tab="seasons">🏟️ Saisons</button>
     </nav>
   </header>
@@ -26,6 +27,7 @@
     <section id="tab-leaderboard" class="tab active">
       <div class="leaderboard-header">
         <h2>Classement</h2>
+        <div id="lb-season-timer" class="season-timer"></div> <!-- Timer container -->
         <div id="lb-podium" class="podium"></div>
       </div>
       
@@ -85,10 +87,27 @@
             <li>🎰 <strong>Jackpot</strong> : +<span id="rule-xpJackpot">20</span> XP (Score miroir : 11, 22...)</li>
             <li>🤝 <strong>Égalité</strong> : +<span id="rule-xpEgalite">10</span> XP (Même score qu'un autre)</li>
             <li>⚔️🏆 <strong>Tueur de Géants</strong> : +<span id="rule-xpTueur">50</span> XP (Bat un plus haut niveau)</li>
+            <li>🔥 <strong>Phénix</strong> : +<span id="rule-xpPhenix">0</span> XP (Outsider qui gagne)</li>
+            <li>🔥🔥 <strong>Serial Winner</strong> : +<span id="rule-xpSerialWinner">0</span> XP (3ᵉ victoire d'affilée)</li>
+            <li>🥉 <strong>Benjamin</strong> : +<span id="rule-xpBenjamin">0</span> XP (Dernier mais proche du finish)</li>
           </ul>
+          <p id="rule-bonusVainqueurParRang" class="muted" style="font-size:0.85rem;display:none">⚖️ Bonus vainqueur pondéré par palier actif (−25% par palier d'écart, plancher 0)</p>
         </div>
         
-        <p class="levels-info">Niveaux : Pousse-Caillou (0), Lanceur du Dimanche (500), Sniper de Comptoir (2000), Maître du 301 (5000), Phil Taylor (10000).</p>
+        <p class="levels-info">Niveaux individuels : Pousse-Caillou (0) • Lanceur du Dimanche (500) • Sniper de Comptoir (2000) • Maître du 301 (5000) • Phil Taylor (10000).</p>
+
+        <div class="guilds-help-summary" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed rgba(255, 255, 255, 0.1);">
+          <h4>🏰 Guildes & Rangs d'Alliance</h4>
+          <p class="muted" style="font-size: 0.8rem; line-height: 1.4; margin-bottom: 0.5rem; color: var(--muted);">
+            En rejoignant une alliance dans l'onglet <strong>🛡️ Guildes</strong>, vous obtenez un grade dynamique calculé en temps réel en fonction de vos exploits et badges :
+          </p>
+          <p class="levels-info" style="margin-bottom: 0.5rem; color: var(--accent);">
+            Rangs : Recrue 👤 • Écuyer 🏹 (500 XP) • Initié 🎖️ (1k) • Couronné 🏰 (2k) • Légendaire 🛡️🔥 (3k) • Champion ⚔️ (5k) • Tueur de Dragons 🐉 (5k + Tueur de Géants) • Maître 👑 (10k) • Divinité 👑✨ (10k + 10 badges).
+          </p>
+          <p class="muted" style="font-size: 0.8rem; line-height: 1.4; color: var(--muted);">
+            L'alliance débloque également des hauts faits collectifs basés sur l'effort de tous les membres (Apprentis 🥉, Champions 🥈, Légendes 🥇, Conquérants ⚔️, Tanière 🐉).
+          </p>
+        </div>
       </details>
     </section>
 
@@ -96,9 +115,7 @@
       <h2 id="match-form-title">Enregistrer un match terminé</h2>
       <form id="match-form">
         <input type="hidden" id="m-id" />
-        <label>Saison
-          <select id="m-season" required></select>
-        </label>
+        <!-- Saison selection removed, now auto-detected by playedAt -->
         <label>Date / heure (optionnel)
           <input type="datetime-local" id="m-playedAt" />
         </label>
@@ -134,11 +151,109 @@
       <ul id="p-list"></ul>
     </section>
 
+    <section id="tab-guilds" class="tab">
+      <h2>🛡️ Guildes</h2>
+
+      <!-- Classement des Guildes -->
+      <h3 style="margin-top: 2rem;">Classement des Guildes</h3>
+      <div id="guild-ranking-container" class="ranking-container">
+        <table id="guild-ranking-table" class="data-table">
+          <thead>
+            <tr>
+              <th>Rang</th>
+              <th>Guilde</th>
+              <th>XP Collective</th>
+              <th>Membres</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Les lignes de classement seront insérées ici par JavaScript -->
+          </tbody>
+        </table>
+        <p id="guild-ranking-empty" class="muted hidden">Aucune guilde enregistrée pour l'instant.</p>
+      </div>
+      
+      <!-- Aide et Légende des Rangs & Hauts Faits -->
+      <details class="guilds-help-legend" style="margin-top: 2rem;">
+        <summary>ℹ️ Comprendre les Rangs & Hauts Faits d'Alliance</summary>
+        <div class="legend-content">
+          <div class="legend-section">
+            <h3>👑 Rangs Autonomes des Compagnons</h3>
+            <p class="muted">Les rangs sont attribués automatiquement en temps réel en fonction de l'XP et du total de badges cumulés :</p>
+            <ul class="ranks-legend-list">
+              <li><span>👑✨ Divinité du Triple</span> : Plus haute XP de la guilde, ≥ 10 000 XP et ≥ 10 badges de carrière.</li>
+              <li><span>👑 Maître Suprême</span> : Plus haute XP de la guilde, OU ≥ 10 000 XP et ≥ 5 badges.</li>
+              <li><span>🐉 Tueur de Dragons</span> : ≥ 5 000 XP, ≥ 8 badges et possède la médaille <em>Tueur de Géants</em>.</li>
+              <li><span>⚔️ Champion d'Élite</span> : ≥ 5 000 XP, OU ≥ 4 badges et la médaille <em>Tueur de Géants</em>.</li>
+              <li><span>🛡️🔥 Vétéran Légendaire</span> : ≥ 3 000 XP et ≥ 6 badges.</li>
+              <li><span>🏰 Vétéran Couronné</span> : ≥ 2 000 XP, OU ≥ 3 badges.</li>
+              <li><span>🎖️ Lanceur Initié</span> : ≥ 1 000 XP, OU ≥ 2 badges.</li>
+              <li><span>🏹 Écuyer de l'Arène</span> : ≥ 500 XP, OU ≥ 1 badge.</li>
+              <li><span>👤 Recrue</span> : Rôle initial automatique (< 500 XP et 0 badge).</li>
+            </ul>
+          </div>
+          
+          <div class="legend-section">
+            <h3>🏆 Hauts Faits Collectifs de Guilde</h3>
+            <p class="muted">Débloqués grâce aux efforts cumulés de tous les compagnons de votre alliance :</p>
+            <ul class="achievements-legend-list">
+              <li><span>🥉 Apprentis de la Fléchette</span> : Débloqué dès que la guilde atteint 500 XP collective.</li>
+              <li><span>🥈 Champions en Devenir</span> : Débloqué dès que la guilde atteint 2 000 XP collective.</li>
+              <li><span>🥇 Légendes Vivantes</span> : Débloqué dès que la guilde atteint 10 000 XP collective.</li>
+              <li><span>⚔️ Conquérants</span> : Débloqué dès que la guilde totalise 10 victoires cumulées.</li>
+              <li><span>🐉 Tanière des Géants</span> : Débloqué si au moins un membre atteint un niveau Maître (≥ 5 000 XP).</li>
+            </ul>
+          </div>
+        </div>
+      </details>
+
+      <!-- Creation / Edition Form -->
+      <form id="guild-form">
+        <input type="hidden" id="g-editing-id" />
+        <div class="guild-form-row">
+          <input type="text" id="g-name" placeholder="Nom de la guilde" required maxlength="64" />
+          
+          <div class="emblem-selectors">
+            <label>Badge émoji
+              <input type="text" id="g-badgeIcon" value="🛡️" required maxlength="8" style="font-size:1.5rem; text-align:center; width:60px;" />
+            </label>
+            
+            <label>Couleur thématique
+              <input type="color" id="g-badgeColor" value="#3dc7ff" required />
+            </label>
+          </div>
+          
+          <div class="guild-preview-box">
+            <span class="preview-label">Aperçu :</span>
+            <div id="guild-badge-preview" class="guild-badge-preview">🛡️</div>
+          </div>
+        </div>
+
+        <div class="actions" style="display:flex; gap:0.5rem; margin-top:1rem;">
+          <button type="submit" id="g-submit">Créer la Guilde</button>
+          <button type="button" id="g-cancel" class="muted hidden">Annuler</button>
+        </div>
+        <span id="g-status" class="status"></span>
+      </form>
+      
+      <div id="guilds-container" class="guilds-grid">
+        <!-- Dynamic Guild Cards go here -->
+      </div>
+    </section>
+
     <section id="tab-seasons" class="tab">
       <h2>Saisons</h2>
       <form id="season-form">
         <input type="hidden" id="s-editing-id" />
         <input type="text" id="s-name" placeholder="Nom de la saison" required maxlength="64" />
+        <div class="rules-config">
+          <label>📅 Début
+            <input type="datetime-local" id="s-startedAt" />
+          </label>
+          <label>🏁 Fin (optionnel)
+            <input type="datetime-local" id="s-endedAt" />
+          </label>
+        </div>
         <div class="rules-config">
           <label>⚔️ XP par adversaire
             <input type="number" id="s-xpOpponent" value="50" />
@@ -173,6 +288,22 @@
           </label>
           <label>⚔️🏆 Tueur de Géants
             <input type="number" id="s-xpTueur" value="50" />
+          </label>
+          <label>🔥 Phénix
+            <input type="number" id="s-xpPhenix" value="30" />
+          </label>
+          <label>🔥🔥 Serial Winner
+            <input type="number" id="s-xpSerialWinner" value="40" />
+          </label>
+          <label>🥉 Benjamin
+            <input type="number" id="s-xpBenjamin" value="15" />
+          </label>
+        </div>
+        <h3>⚖️ Règles avancées</h3>
+        <div class="rules-config">
+          <label class="checkbox-label" style="flex-direction:row;align-items:center;gap:0.5rem;cursor:pointer">
+            <input type="checkbox" id="s-bonusVainqueurParRang" />
+            Bonus vainqueur pondéré par palier de niveau (−25% par palier d'écart)
           </label>
         </div>
         <div class="actions" style="display:flex;gap:0.5rem">
@@ -211,10 +342,20 @@
           <h2 class="splash-title">Saisissez, progressez, dominez</h2>
           <p class="splash-sub">Un vrai système RPG</p>
           <ul class="splash-features">
-            <li>📋 Enregistrez chaque match en quelques secondes</li>
-            <li>✨ Gagnez de l'XP à chaque victoire — et même en perdant</li>
-            <li>🏅 Débloquez des badges : Poulidor, Jackpot, Tueur de Géants…</li>
-            <li>📈 Progressez de Pousse-Caillou jusqu'à Phil Taylor</li>
+            <li>📋 Saisie rapide des scores et calcul à la volée</li>
+            <li>✨ Progressez du niveau Pousse-Caillou à Phil Taylor</li>
+            <li>🏅 Débloquez des badges spéciaux : Poulidor, Jackpot...</li>
+          </ul>
+        </div>
+
+        <div class="splash-step">
+          <span class="splash-emoji">🛡️</span>
+          <h2 class="splash-title">Système de Guildes & Rangs Autonomes</h2>
+          <p class="splash-sub">Une compétition féroce par équipe</p>
+          <ul class="splash-features">
+            <li>🏷️ Créez votre guilde avec un émoji et une couleur thématique</li>
+            <li>👑 Rangs internes 100% autonomes basés sur l'XP et vos badges cumulés</li>
+            <li>🏆 Débloquez des badges collectifs de hauts faits avec vos compagnons</li>
           </ul>
         </div>
 
@@ -223,8 +364,8 @@
           <h2 class="splash-title">En avant !</h2>
           <p class="splash-sub">L'arène vous attend</p>
           <p class="splash-body">
-            Créez vos joueurs, lancez une saison,<br>
-            et que le meilleur gagne.
+            Créez vos joueurs, rejoignez une guilde,<br>
+            et régnez sur le classement général et saisonnier !
           </p>
           <button id="splash-cta">C'est parti ! 🎯</button>
         </div>
@@ -237,6 +378,7 @@
           <span class="splash-dot active" data-dot="0"></span>
           <span class="splash-dot" data-dot="1"></span>
           <span class="splash-dot" data-dot="2"></span>
+          <span class="splash-dot" data-dot="3"></span>
         </div>
         <button id="splash-next" class="splash-nav-btn" aria-label="Suivant">›</button>
       </div>

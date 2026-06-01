@@ -2,7 +2,8 @@
 
 // ----- Admin password -----
 let adminPassword = localStorage.getItem("adminPassword") || "";
-const SPLASH_KEY = "splashSeen";
+const SPLASH_VERSION = "2.0";
+const SPLASH_KEY = "splashSeenVersion";
 
 function updateLockBtn() {
   const btn = document.getElementById("lock-btn");
@@ -38,11 +39,65 @@ const api = {
   listMatches: (seasonId) => api.req("/matches" + (seasonId ? `?seasonId=${seasonId}` : "")),
   recordMatch: (payload) => api.req("/matches", { method: "POST", body: JSON.stringify(payload) }),
   deleteMatch: (id) => api.req(`/matches/${id}`, { method: "DELETE" }),
-  leaderboard: () => api.req(`/leaderboard`),
+  leaderboard: (seasonId) => {
+    if (seasonId) {
+      return api.req(`/seasons/${seasonId}/leaderboard`);
+    }
+    return api.req(`/leaderboard`); // Global leaderboard
+  },
+  listGuilds: () => api.req("/guilds"),
+  createGuild: (payload) => api.req("/guilds", { method: "POST", body: JSON.stringify(payload) }),
+  updateGuild: (id, payload) => api.req(`/guilds/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  deleteGuild: (id) => api.req(`/guilds/${id}`, { method: "DELETE" }),
+  joinGuild: (guildId, playerId) => api.req(`/guilds/${guildId}/members`, { method: "POST", body: JSON.stringify({ playerId: Number(playerId) }) }),
+  leaveGuild: (guildId, playerId) => api.req(`/guilds/${guildId}/members/${playerId}`, { method: "DELETE" }),
 };
 
 let players = [];
 let seasons = [];
+
+const MEDALS_MAP = {
+  POULIDOR: "🥈",
+  JACKPOT: "🎰",
+  EGALITE: "🤝",
+  TUEUR_DE_GEANTS: "⚔️🏆",
+  PHENIX: "🔥",
+  SERIAL_WINNER: "🔥🔥",
+  BENJAMIN: "🥉",
+};
+
+function daysUntil(endedAt) {
+  if (!endedAt) return null;
+  const end = new Date(endedAt).getTime();
+  const now = Date.now();
+  return Math.ceil((end - now) / 86400000);
+}
+
+function seasonEndLabel(s) {
+  if (!s.endedAt) return "⏱️ Saison en cours (sans date de fin)";
+  const end = new Date(s.endedAt).getTime();
+  const now = Date.now();
+  const ms = end - now;
+
+  if (ms < 0) {
+    const past = Math.ceil(-ms / 86400000);
+    return `✅ Saison terminée il y a ${past} jour${past > 1 ? "s" : ""}`;
+  }
+
+  const days = Math.floor(ms / 86400000);
+  const hours = Math.floor((ms % 86400000) / 3600000);
+  const mins = Math.floor((ms % 3600000) / 60000);
+
+  if (days > 0) {
+    return `⏳ Se termine dans ${days}j ${hours}h`;
+  } else if (hours > 0) {
+    return `⏳ Se termine dans ${hours}h ${mins}min`;
+  } else if (mins > 0) {
+    return `⏳ Se termine dans ${mins} minutes`;
+  } else {
+    return "🔔 Se termine dans moins d'une minute !";
+  }
+}
 
 const LEVELS = [
   { title: "Pousse-Caillou", minXP: 0 },
@@ -132,10 +187,17 @@ async function refreshPlayers() {
 
   for (const p of players) {
     const li = document.createElement("li");
+    const badgesEntries = Object.entries(p.badges || {});
+    const badgesHtml = badgesEntries.length
+      ? `<span class="player-badges">${badgesEntries
+          .map(([name, count]) => `<span class="medal-icon" title="${name}">${MEDALS_MAP[name] || name}${count > 1 ? `×${count}` : ""}</span>`)
+          .join("")}</span>`
+      : "";
     li.innerHTML = `
       <div class="player-info">
         <strong>${escapeHtml(p.name)}</strong>
-        <span class="muted">${p.matchCount} match${p.matchCount !== 1 ? "s" : ""} · ${p.totalXP} XP</span>
+        <span class="muted">${p.totalXP} XP</span>
+        ${badgesHtml}
       </div>
       <button class="muted small edit-player" data-id="${p.id}" data-name="${escapeHtml(p.name)}">Modifier</button>
     `;
@@ -191,10 +253,12 @@ async function refreshSeasons() {
   for (const s of seasons) {
     const li = document.createElement("li");
     const date = new Date(s.startedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    const endLabel = seasonEndLabel(s);
     li.innerHTML = `
       <div>
         <span style="font-weight:700">${escapeHtml(s.name)}</span>
         <span class="muted" style="font-size:0.78rem;display:block">Depuis le ${date}</span>
+        <span class="muted" style="font-size:0.78rem;display:block">${endLabel}</span>
       </div>
       <div style="display:flex;gap:0.4rem">
         <button class="edit-season small muted" data-id="${s.id}" style="width:auto">✏️ Modifier</button>
@@ -241,9 +305,43 @@ async function refreshSeasons() {
       sel.appendChild(opt);
     }
     if (prev) sel.value = prev;
+
+    // Logic for lb-season only: pre-select current season
+    if (id === "lb-season") {
+      const now = new Date();
+      let currentSeason = null;
+      let latestSeason = null;
+
+      for (const s of seasons) {
+        const startedAt = s.startedAt ? new Date(s.startedAt) : null;
+        const endedAt = s.endedAt ? new Date(s.endedAt) : null;
+
+        // Find the current season
+        if (startedAt && startedAt <= now && (!endedAt || endedAt >= now)) {
+          if (!currentSeason || startedAt > new Date(currentSeason.startedAt)) {
+            currentSeason = s;
+          }
+        }
+
+        // Keep track of the latest season for fallback
+        if (!latestSeason || (startedAt && startedAt > new Date(latestSeason.startedAt))) {
+            latestSeason = s;
+        }
+      }
+
+      if (currentSeason) {
+        sel.value = currentSeason.id;
+      } else if (latestSeason) { // Fallback to the latest season if no current one
+        sel.value = latestSeason.id;
+      } else {
+        // If no seasons exist, ensure no value is selected (or default to empty if option exists)
+        sel.value = "";
+      }
+    }
   }
 
   updateRuleDisplay(document.getElementById("lb-season").value);
+  refreshLeaderboard(); // Refresh leaderboard after season is selected and rules updated
 }
 
 function updateRuleDisplay(seasonId) {
@@ -256,10 +354,23 @@ function updateRuleDisplay(seasonId) {
   document.getElementById("rule-xpVampire").textContent = season.xpVampireMultiplier;
   document.getElementById("rule-xpSurvivor").textContent = season.xpSurvivorBase;
 
-  document.getElementById("rule-xpPoulidor").textContent = season.xpBonusPoulidor;
-  document.getElementById("rule-xpJackpot").textContent = season.xpBonusJackpot;
-  document.getElementById("rule-xpEgalite").textContent = season.xpBonusEgalite;
-  document.getElementById("rule-xpTueur").textContent = season.xpBonusTueurDeGeants;
+  const setBadge = (spanId, value) => {
+    const el = document.getElementById(spanId);
+    if (!el) return;
+    el.textContent = value;
+    const li = el.closest("li");
+    if (li) li.style.display = value > 0 ? "" : "none";
+  };
+  setBadge("rule-xpPoulidor", season.xpBonusPoulidor);
+  setBadge("rule-xpJackpot", season.xpBonusJackpot);
+  setBadge("rule-xpEgalite", season.xpBonusEgalite);
+  setBadge("rule-xpTueur", season.xpBonusTueurDeGeants);
+  setBadge("rule-xpPhenix", season.xpBonusPhenix);
+  setBadge("rule-xpSerialWinner", season.xpBonusSerialWinner);
+  setBadge("rule-xpBenjamin", season.xpBonusBenjamin);
+
+  const bvrEl = document.getElementById("rule-bonusVainqueurParRang");
+  if (bvrEl) bvrEl.style.display = season.bonusVainqueurParRang ? "block" : "none";
 }
 
 const SEASON_DEFAULTS = {
@@ -273,6 +384,10 @@ const SEASON_DEFAULTS = {
   xpBonusJackpot: 20,
   xpBonusEgalite: 10,
   xpBonusTueurDeGeants: 50,
+  xpBonusPhenix: 30,
+  xpBonusSerialWinner: 40,
+  xpBonusBenjamin: 15,
+  bonusVainqueurParRang: false,
 };
 
 const SEASON_FIELD_MAP = {
@@ -286,11 +401,22 @@ const SEASON_FIELD_MAP = {
   xpBonusJackpot: "s-xpJackpot",
   xpBonusEgalite: "s-xpEgalite",
   xpBonusTueurDeGeants: "s-xpTueur",
+  xpBonusPhenix: "s-xpPhenix",
+  xpBonusSerialWinner: "s-xpSerialWinner",
+  xpBonusBenjamin: "s-xpBenjamin",
 };
+
+function formatDateForInput(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toISOString().slice(0, 16);
+}
 
 function editSeason(s) {
   document.getElementById("s-editing-id").value = s.id;
   document.getElementById("s-name").value = s.name;
+  document.getElementById("s-startedAt").value = formatDateForInput(s.startedAt);
+  document.getElementById("s-endedAt").value = formatDateForInput(s.endedAt);
   document.getElementById("s-submit").textContent = "Mettre à jour";
   document.getElementById("s-cancel").classList.remove("hidden");
 
@@ -298,19 +424,25 @@ function editSeason(s) {
     const el = document.getElementById(id);
     if (el && s[key] !== undefined) el.value = s[key];
   }
-
+  const cbRang = document.getElementById("s-bonusVainqueurParRang");
+  if (cbRang) cbRang.checked = !!s.bonusVainqueurParRang;
+  
   document.getElementById("season-form").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function resetSeasonForm() {
   document.getElementById("s-editing-id").value = "";
   document.getElementById("s-name").value = "";
+  document.getElementById("s-startedAt").value = "";
+  document.getElementById("s-endedAt").value = "";
   document.getElementById("s-submit").textContent = "Créer";
   document.getElementById("s-cancel").classList.add("hidden");
   for (const [key, id] of Object.entries(SEASON_FIELD_MAP)) {
     const el = document.getElementById(id);
     if (el) el.value = SEASON_DEFAULTS[key] ?? "";
   }
+  const cbRang = document.getElementById("s-bonusVainqueurParRang");
+  if (cbRang) cbRang.checked = false;  
 }
 
 document.getElementById("s-cancel").addEventListener("click", resetSeasonForm);
@@ -323,11 +455,21 @@ document.getElementById("season-form").addEventListener("submit", async (e) => {
   const btn = document.getElementById("s-submit");
   setLoading(btn, true);
 
-  const payload = { name };
+  const startedAt = document.getElementById("s-startedAt").value;
+  const endedAt = document.getElementById("s-endedAt").value;
+
+  const payload = { name }; // Removed TypeScript type annotation
+  if (startedAt) payload.startedAt = new Date(startedAt).toISOString();
+  // Only add endedAt if it's set, and allow null explicitly
+  if (endedAt) payload.endedAt = new Date(endedAt).toISOString();
+  else if (endedAt === "") payload.endedAt = null; // Explicitly send null if cleared
+
   for (const [key, id] of Object.entries(SEASON_FIELD_MAP)) {
     const el = document.getElementById(id);
     if (el && el.value !== "") payload[key] = Number(el.value);
   }
+  const cbRang = document.getElementById("s-bonusVainqueurParRang");
+  if (cbRang) payload.bonusVainqueurParRang = cbRang.checked;  
 
   try {
     if (editingId) {
@@ -493,7 +635,7 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
   const status = document.getElementById("m-status");
   const btn = e.submitter || e.target.querySelector('[type="submit"]');
   const matchId = document.getElementById("m-id").value;
-  const seasonId = Number(document.getElementById("m-season").value);
+  // seasonId is no longer directly selected by user, it's auto-detected
   const playedAtRaw = document.getElementById("m-playedAt").value;
   const rows = [...participantsEl.querySelectorAll(".participant-row")];
 
@@ -520,8 +662,9 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
     return setStatus(status, "Un joueur est sélectionné plusieurs fois", false);
   }
 
-  const payload = { seasonId, winner: { playerId: winnerId, finishType }, losers };
+  const payload = { winner: { playerId: winnerId, finishType }, losers }; // Removed TypeScript type annotation
   if (playedAtRaw) payload.playedAt = new Date(playedAtRaw).toISOString();
+  // seasonId is no longer sent from client, it's auto-detected by server
 
   setLoading(btn, true);
   try {
@@ -561,17 +704,10 @@ function showMatchSummary(match) {
 
   document.getElementById("modal-winner-name").textContent = winner.player.name;
 
-  const medalsMap = {
-    POULIDOR: "🥈",
-    JACKPOT: "🎰",
-    EGALITE: "🤝",
-    TUEUR_DE_GEANTS: "⚔️🏆",
-  };
-
   sorted.forEach((p) => {
     const row = document.createElement("div");
     row.className = "modal-row" + (p.rank === 1 ? " winner" : "");
-    const medalsHtml = (p.medals || []).map((m) => `<span>${medalsMap[m] || m}</span>`).join(" ");
+    const medalsHtml = (p.medals || []).map((m) => `<span>${MEDALS_MAP[m] || m}</span>`).join(" ");
     row.innerHTML = `
       <div class="modal-player">
         <span class="name">${escapeHtml(p.player.name)}</span>
@@ -617,8 +753,7 @@ async function refreshMatchesList() {
         .map((p) => {
           const detail = p.rank === 1 ? ` · Finition ${p.finishType}` : ` · Reste ${p.scoreLeft} pts`;
           const xp = `<span class="xp-gain plus">+${p.xpEarned} XP</span>`;
-          const medalsMap = { POULIDOR: "🥈", JACKPOT: "🎰", EGALITE: "🤝", TUEUR_DE_GEANTS: "⚔️🏆" };
-          const medalsHtml = (p.medals || []).map((m) => `<span class="medal-icon" title="${m}">${medalsMap[m] || m}</span>`).join("");
+          const medalsHtml = (p.medals || []).map((m) => `<span class="medal-icon" title="${m}">${MEDALS_MAP[m] || m}</span>`).join("");
           return `<li><span class="match-li-left"><strong>${p.rank === 1 ? "🏆" : p.rank + "."}</strong> ${escapeHtml(p.player.name)}<span class="muted" style="font-size:0.8rem">${detail}</span></span><span class="match-li-right">${xp}${medalsHtml}</span></li>`;
         })
         .join("");
@@ -656,7 +791,7 @@ async function refreshMatchesList() {
 
 function editMatch(m) {
   document.getElementById("m-id").value = m.id;
-  document.getElementById("m-season").value = m.seasonId;
+  // document.getElementById("m-season").value = m.seasonId; // Removed season selection
   document.getElementById("m-playedAt").value = new Date(m.playedAt).toISOString().slice(0, 16);
   document.getElementById("match-form-title").textContent = "Modifier le match #" + m.id;
 
@@ -676,14 +811,59 @@ function editMatch(m) {
 document.getElementById("ml-refresh").addEventListener("click", refreshMatchesList);
 
 // ----- Leaderboard -----
+let leaderboardTimer = null; // To hold the interval reference
+
 async function refreshLeaderboard() {
   const btn = document.getElementById("lb-refresh");
   setLoading(btn, true);
   try {
-    const data = await api.leaderboard();
+    const seasonId = document.getElementById("lb-season").value;
+    const response = await api.leaderboard(seasonId); // Pass seasonId to API
+    const data = Array.isArray(response) ? response : (response.leaderboard || []);
     const tbody = document.querySelector("#lb-table tbody");
     const podium = document.getElementById("lb-podium");
     const empty = document.getElementById("lb-empty");
+    const timerEl = document.getElementById("lb-season-timer");
+
+    // Clear previous timer if any
+    if (leaderboardTimer) clearInterval(leaderboardTimer);
+    timerEl.textContent = "";
+
+    // If a season is selected, fetch its details to display timer
+    if (seasonId) {
+      const selectedSeason = seasons.find(s => s.id == seasonId);
+      if (selectedSeason && selectedSeason.endedAt) {
+        const endDate = new Date(selectedSeason.endedAt);
+        const updateTimer = () => {
+          const now = new Date();
+          const diff = endDate.getTime() - now.getTime();
+
+          if (diff <= 0) {
+            timerEl.textContent = `Saison "${selectedSeason.name}" terminée.`;
+            clearInterval(leaderboardTimer);
+            return;
+          }
+
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+          let timerText = "Saison se termine dans : ";
+          if (days > 0) timerText += `${days}j `;
+          if (hours > 0) timerText += `${hours}h `;
+          if (minutes > 0) timerText += `${minutes}m `;
+          timerText += `${seconds}s`;
+
+          timerEl.textContent = timerText;
+        };
+        updateTimer();
+        leaderboardTimer = setInterval(updateTimer, 1000);
+      } else {
+        timerEl.textContent = "Saison active, pas de date de fin définie.";
+      }
+    }
+
 
     tbody.innerHTML = "";
     podium.innerHTML = "";
@@ -703,10 +883,11 @@ async function refreshLeaderboard() {
         if (!p) return '<div class="podium-spot empty"></div>';
         const rank = idx + 1;
         const crown = rank === 1 ? "👑" : rank === 2 ? "🥈" : "🥉";
+        const nameVal = p.playerName || p.name;
         return `
           <div class="podium-spot rank-${rank}">
             <div class="podium-crown">${crown}</div>
-            <div class="podium-name">${escapeHtml(p.name)}</div>
+            <div class="podium-name">${escapeHtml(nameVal)}</div>
             <div class="podium-xp">${p.totalXP} XP</div>
             <div class="podium-base"></div>
           </div>
@@ -733,25 +914,47 @@ async function refreshLeaderboard() {
         xpLabel = `${xpRemaining} XP avant ${nextLevel.title}`;
       }
 
-      const levelSlug = r.level.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      // Calculer le niveau s'il n'est pas fourni (ex: classement par saison)
+      let levelTitle = r.level;
+      if (!levelTitle) {
+        for (let idx = LEVELS.length - 1; idx >= 0; idx--) {
+          if (r.totalXP >= LEVELS[idx].minXP) {
+            levelTitle = LEVELS[idx].title;
+            break;
+          }
+        }
+        if (!levelTitle) levelTitle = LEVELS[0].title;
+      }
+
+      const levelSlug = levelTitle.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
       const tr = document.createElement("tr");
+      
+      const nameVal = r.playerName || r.name || "Joueur inconnu";
+      const matchCountVal = r.matchesPlayed !== undefined ? r.matchesPlayed : (r.matchCount !== undefined ? r.matchCount : 0);
+      
+      const guildBadgesHtml = (r.guilds || []).map(g => `
+        <span class="player-mini-guild-badge" style="background-color: ${g.badgeColor}" title="${escapeHtml(g.name)}">${escapeHtml(g.badgeIcon)}</span>
+      `).join("");
+
       tr.innerHTML = `
         <td>${i + 1}</td>
-        <td><strong>${escapeHtml(r.name)}</strong></td>
         <td>
-          <div class="lb-stats">
-            <span>${r.matchCount} match${r.matchCount !== 1 ? "s" : ""}</span>
-            <span class="lb-xp-total">${r.totalXP} XP</span>
+          <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">
+            <strong>${escapeHtml(nameVal)}</strong>
+            ${guildBadgesHtml}
           </div>
         </td>
-        <td>${r.totalXP} XP</td>
+        <td>
+          &nbsp;
+        </td>
+        <td><strong>${r.totalXP} XP</strong></td>
         <td>
           <div class="xp-progress-bg">
             <div class="xp-progress-bar" data-pct="${progressPercent}" style="width:0%"></div>
           </div>
           <div class="xp-next-label">${xpLabel}</div>
         </td>
-        <td><span class="level-badge level-${levelSlug}">${r.level}</span></td>
+        <td><span class="level-badge level-${levelSlug}">${levelTitle}</span></td>
       `;
       tbody.appendChild(tr);
       bars.push(tr.querySelector(".xp-progress-bar"));
@@ -792,6 +995,13 @@ document.getElementById("lb-season").addEventListener("change", () => {
   updateRuleDisplay(document.getElementById("lb-season").value);
 });
 
+setInterval(() => {
+  const seasonId = document.getElementById("lb-season").value;
+  if (seasonId) {
+    const season = seasons.find((s) => s.id == seasonId) || seasons[0];
+  }
+}, 30000);
+
 document.getElementById("lb-recalculate").addEventListener("click", async () => {
   const seasonId = document.getElementById("lb-season").value;
   if (!seasonId) return showToast("Choisissez une saison", "err");
@@ -815,16 +1025,303 @@ function onTabShow(tab) {
   if (tab === "leaderboard") {
     refreshLeaderboard();
     renderLevelsLegend();
-  } else if (tab === "matches") {
+  } else {
+    // Stop the timer when switching from leaderboard tab
+    if (leaderboardTimer) clearInterval(leaderboardTimer);
+    document.getElementById("lb-season-timer").textContent = "";
+  }
+  
+  if (tab === "matches") {
     refreshMatchesList();
   } else if (tab === "match" && participantsEl.children.length === 0) {
     addParticipantRow();
     addParticipantRow();
+  } else if (tab === "guilds") {
+    refreshGuilds();
   }
 }
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+// ----- Guildes -----
+const gBadgeIconInput = document.getElementById("g-badgeIcon");
+const gBadgeColorInput = document.getElementById("g-badgeColor");
+const gPreview = document.getElementById("guild-badge-preview");
+
+if (gBadgeIconInput && gBadgeColorInput && gPreview) {
+  const updatePreview = () => {
+    gPreview.textContent = gBadgeIconInput.value || "🛡️";
+    gPreview.style.backgroundColor = gBadgeColorInput.value || "#3dc7ff";
+    gPreview.style.boxShadow = `0 0 15px ${gBadgeColorInput.value || "#3dc7ff"}60`;
+  };
+  gBadgeIconInput.addEventListener("input", updatePreview);
+  gBadgeColorInput.addEventListener("input", updatePreview);
+  updatePreview();
+}
+
+function resetGuildForm() {
+  document.getElementById("g-editing-id").value = "";
+  document.getElementById("g-name").value = "";
+  document.getElementById("g-badgeIcon").value = "🛡️";
+  document.getElementById("g-badgeColor").value = "#3dc7ff";
+  document.getElementById("g-submit").textContent = "Créer la Guilde";
+  document.getElementById("g-cancel").classList.add("hidden");
+  if (gPreview) {
+    gPreview.textContent = "🛡️";
+    gPreview.style.backgroundColor = "#3dc7ff";
+    gPreview.style.boxShadow = "none";
+  }
+}
+
+const gCancelBtn = document.getElementById("g-cancel");
+if (gCancelBtn) {
+  gCancelBtn.addEventListener("click", resetGuildForm);
+}
+
+const guildForm = document.getElementById("guild-form");
+if (guildForm) {
+  guildForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const idVal = document.getElementById("g-editing-id").value;
+    const name = document.getElementById("g-name").value.trim();
+    const badgeIcon = document.getElementById("g-badgeIcon").value.trim();
+    const badgeColor = document.getElementById("g-badgeColor").value.trim();
+    const status = document.getElementById("g-status");
+    const btn = document.getElementById("g-submit");
+
+    setLoading(btn, true);
+    try {
+      if (idVal) {
+        if (!adminPassword) {
+          const hasAdmin = await ensureAdminPassword();
+          if (!hasAdmin) return;
+        }
+        await api.updateGuild(idVal, { name, badgeIcon, badgeColor });
+        showToast("Guilde modifiée ✓", "ok");
+      } else {
+        await api.createGuild({ name, badgeIcon, badgeColor });
+        showToast("Guilde créée ✓", "ok");
+      }
+      resetGuildForm();
+      await refreshGuilds();
+    } catch (err) {
+      setStatus(status, err.message, false);
+    } finally {
+      setLoading(btn, false);
+    }
+  });
+}
+
+async function refreshGuilds() {
+  const container = document.getElementById("guilds-container");
+  if (!container) return;
+
+  const rankingTbody = document.querySelector("#guild-ranking-table tbody");
+  const rankingEmpty = document.getElementById("guild-ranking-empty");
+  const rankingTable = document.getElementById("guild-ranking-table");
+
+  try {
+    const guilds = await api.listGuilds();
+    players = await api.listPlayers();
+
+    // Rendre le classement des guildes
+    if (rankingTbody) {
+      rankingTbody.innerHTML = "";
+      if (guilds.length === 0) {
+        if (rankingEmpty) rankingEmpty.classList.remove("hidden");
+        if (rankingTable) rankingTable.classList.add("hidden");
+      } else {
+        if (rankingEmpty) rankingEmpty.classList.add("hidden");
+        if (rankingTable) rankingTable.classList.remove("hidden");
+
+        guilds.forEach((g, idx) => {
+          const tr = document.createElement("tr");
+          const membersList = g.members.map(m => `${escapeHtml(m.name)} (${m.totalXP} XP)`).join(", ");
+          tr.innerHTML = `
+            <td><strong>${idx + 1}</strong></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:0.5rem">
+                <span class="player-mini-guild-badge" style="background-color: ${g.badgeColor}; height: auto; width: auto; font-size: 1.2rem; padding: 0.2rem 0.4rem; border-radius: 4px;" title="${escapeHtml(g.name)}">${escapeHtml(g.badgeIcon)}</span>
+                <strong>${escapeHtml(g.name)}</strong>
+              </div>
+            </td>
+            <td><strong>${g.collectiveXP} XP</strong></td>
+            <td style="font-size:0.85rem;color:var(--muted);">${membersList || "Aucun membre"}</td>
+          `;
+          rankingTbody.appendChild(tr);
+        });
+      }
+    }
+
+    container.innerHTML = "";
+    if (guilds.length === 0) {
+      container.innerHTML = `<div class="empty-state" style="grid-column: 1/-1; text-align: center; color: var(--muted); padding: 2rem;">
+        Aucune guilde créée. Soyez le premier à fonder une alliance !
+      </div>`;
+      return;
+    }
+
+    guilds.forEach((g) => {
+      const totalGuildXP = g.members.reduce((sum, m) => sum + m.totalXP, 0);
+
+      const achsHtml = g.achievements.map(a => `
+        <span class="guild-badge-item ${a.unlocked ? 'unlocked' : 'locked'}" title="${escapeHtml(a.description)}">
+          ${a.unlocked ? '✅' : '🔒'} ${a.icon} <strong>${escapeHtml(a.title)}</strong>
+        </span>
+      `).join("");
+
+      const membersHtml = g.members.map((m) => {
+        return `
+          <div class="guild-member-row">
+            <span class="g-rank-ico" title="${escapeHtml(m.guildRank)}">${m.guildRankIcon}</span>
+            <div class="g-member-details">
+              <strong>${escapeHtml(m.name)} <span class="g-member-rank-tag">(${escapeHtml(m.guildRank)})</span></strong>
+              <span class="g-member-sub">${m.totalXP} XP • 🏅 ${m.totalBadgesCount} badges</span>
+            </div>
+            <button class="leave-guild-btn small muted" data-guild-id="${g.id}" data-player-id="${m.id}" title="Exclure ce membre">🗑️</button>
+          </div>
+        `;
+      }).join("");
+
+      const availablePlayers = players.filter(p => !g.members.some(gm => gm.id === p.id));
+      let addMemberHtml = "";
+      if (availablePlayers.length > 0) {
+        addMemberHtml = `
+          <div class="add-member-control">
+            <select class="add-member-select" data-guild-id="${g.id}">
+              <option value="">+ Recruter un joueur...</option>
+              ${availablePlayers.map(p => `<option value="${p.id}">${escapeHtml(p.name)} (${p.totalXP} XP)</option>`).join("")}
+            </select>
+          </div>
+        `;
+      } else {
+        addMemberHtml = `<p class="muted small" style="text-align:center;margin-top:0.5rem">Tous les joueurs sont déjà membres.</p>`;
+      }
+
+      const card = document.createElement("div");
+      card.className = "guild-card";
+      card.style.setProperty("--guild-accent", g.badgeColor);
+      card.innerHTML = `
+        <div class="guild-card-header" style="background: linear-gradient(135deg, ${g.badgeColor}22, ${g.badgeColor}05);">
+          <div class="guild-emblem" style="background-color: ${g.badgeColor}; box-shadow: 0 0 15px ${g.badgeColor}60;">${escapeHtml(g.badgeIcon)}</div>
+          <div class="guild-title-section">
+            <h3>${escapeHtml(g.name)}</h3>
+            <span class="guild-stat-summary">${g.members.length} membre${g.members.length !== 1 ? 's' : ''} • ${totalGuildXP} XP collectif</span>
+          </div>
+          <div class="guild-actions">
+            <button class="edit-guild-btn" data-id="${g.id}" data-name="${escapeHtml(g.name)}" data-icon="${escapeHtml(g.badgeIcon)}" data-color="${g.badgeColor}" title="Modifier la guilde">✏️</button>
+            <button class="delete-guild-btn" data-id="${g.id}" data-name="${escapeHtml(g.name)}" title="Dissoudre la guilde">🗑️</button>
+          </div>
+        </div>
+
+        <div class="guild-card-body">
+          <div class="guild-achievements-section">
+            <h4>🏅 Hauts Faits de l'Alliance</h4>
+            <div class="guild-achievements-list">
+              ${achsHtml}
+            </div>
+          </div>
+
+          <div class="guild-members-section">
+            <h4>👥 Compagnons</h4>
+            <div class="guild-members-list">
+              ${membersHtml || '<p class="muted small" style="text-align:center;padding:0.5rem 0;">Aucun membre pour le moment.</p>'}
+            </div>
+            ${addMemberHtml}
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+
+    container.querySelectorAll(".add-member-select").forEach((select) => {
+      select.addEventListener("change", async (e) => {
+        const playerId = e.target.value;
+        const guildId = select.dataset.guildId;
+        if (!playerId) return;
+        try {
+          await api.joinGuild(guildId, playerId);
+          showToast("Recrutement réussi ✓", "ok");
+          await refreshGuilds();
+          await refreshLeaderboard();
+        } catch (err) {
+          showToast(err.message, "err");
+        }
+      });
+    });
+
+    container.querySelectorAll(".leave-guild-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const guildId = btn.dataset.guildId;
+        const playerId = btn.dataset.playerId;
+        const ok = await showConfirm("Voulez-vous vraiment exclure ce membre de la guilde ?");
+        if (!ok) return;
+        try {
+          await api.leaveGuild(guildId, playerId);
+          showToast("Membre exclu ✓", "ok");
+          await refreshGuilds();
+          await refreshLeaderboard();
+        } catch (err) {
+          showToast(err.message, "err");
+        }
+      });
+    });
+
+    container.querySelectorAll(".edit-guild-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.getElementById("g-editing-id").value = btn.dataset.id;
+        document.getElementById("g-name").value = btn.dataset.name;
+        document.getElementById("g-badgeIcon").value = btn.dataset.icon;
+        document.getElementById("g-badgeColor").value = btn.dataset.color;
+        document.getElementById("g-submit").textContent = "Enregistrer la Guilde";
+        document.getElementById("g-cancel").classList.remove("hidden");
+        document.getElementById("guild-form").scrollIntoView({ behavior: "smooth" });
+        if (gPreview) {
+          gPreview.textContent = btn.dataset.icon;
+          gPreview.style.backgroundColor = btn.dataset.color;
+        }
+      });
+    });
+
+    container.querySelectorAll(".delete-guild-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const guildId = btn.dataset.id;
+        const name = btn.dataset.name;
+        const ok = await showConfirm(`Dissoudre la guilde "${name}" ? Cette action est irréversible.`);
+        if (!ok) return;
+        try {
+          if (!adminPassword) {
+            const hasAdmin = await ensureAdminPassword();
+            if (!hasAdmin) return;
+          }
+          await api.deleteGuild(guildId);
+          showToast("Guilde dissoute ✓", "ok");
+          await refreshGuilds();
+          await refreshLeaderboard();
+        } catch (err) {
+          showToast(err.message, "err");
+        }
+      });
+    });
+
+  } catch (err) {
+    showToast(err.message, "err");
+  }
+}
+
+async function ensureAdminPassword() {
+  const val = prompt("Mot de passe admin requis pour modifier/supprimer une guilde :");
+  if (val === null) return false;
+  const psw = val.trim();
+  if (psw) {
+    adminPassword = psw;
+    localStorage.setItem("adminPassword", adminPassword);
+    updateLockBtn();
+    return true;
+  }
+  return false;
 }
 
 // ----- Splash screen -----
@@ -837,7 +1334,7 @@ function escapeHtml(s) {
   const skipBtn   = document.getElementById("splash-skip");
   const ctaBtn    = document.getElementById("splash-cta");
   const recallBtn = document.getElementById("splash-btn");
-  const TOTAL = 3;
+  const TOTAL = 4;
   let current = 0;
 
   function goTo(n) {
@@ -851,7 +1348,7 @@ function escapeHtml(s) {
   }
 
   function openSplash() { overlay.classList.remove("hidden"); goTo(0); }
-  function closeSplash() { overlay.classList.add("hidden"); localStorage.setItem(SPLASH_KEY, "1"); }
+  function closeSplash() { overlay.classList.add("hidden"); localStorage.setItem(SPLASH_KEY, SPLASH_VERSION); }
 
   prevBtn.addEventListener("click", () => goTo(current - 1));
   nextBtn.addEventListener("click", () => goTo(current + 1));
@@ -866,7 +1363,7 @@ function escapeHtml(s) {
     if (e.key === "Escape")     closeSplash();
   });
 
-  if (!localStorage.getItem(SPLASH_KEY)) openSplash();
+  if (localStorage.getItem(SPLASH_KEY) !== SPLASH_VERSION) openSplash();
 })();
 
 // ----- Boot -----

@@ -4,6 +4,7 @@ import { playersRouter } from "./routes/players";
 import { seasonsRouter } from "./routes/seasons";
 import { matchesRouter } from "./routes/matches";
 import { leaderboardRouter } from "./routes/leaderboard";
+import { guildsRouter } from "./routes/guilds";
 
 const app = express();
 app.use(express.json());
@@ -14,6 +15,7 @@ app.use("/players", playersRouter);
 app.use("/seasons", seasonsRouter);
 app.use("/matches", matchesRouter);
 app.use("/leaderboard", leaderboardRouter);
+app.use("/guilds", guildsRouter);
 
 // Static web UI. `public/` sits at the project root, alongside `dist/`.
 app.use(express.static(path.join(__dirname, "..", "public")));

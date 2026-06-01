@@ -15,10 +15,11 @@ datasource db {
 }
 
 model Player {
-  id           Int                @id @default(autoincrement())
-  name         String             @unique
-  createdAt    DateTime           @default(now()) @map("created_at")
+  id             Int                @id @default(autoincrement())
+  name           String             @unique
+  createdAt      DateTime           @default(now()) @map("created_at")
   participations MatchParticipant[]
+  guilds         PlayerGuild[]
 
   @@map("players")
 }
@@ -40,6 +41,10 @@ model Season {
   xpBonusJackpot         Int @default(20) @map("xp_bonus_jackpot")
   xpBonusEgalite         Int @default(10) @map("xp_bonus_egalite")
   xpBonusTueurDeGeants   Int @default(50) @map("xp_bonus_tueur_de_geants")
+  xpBonusPhenix          Int @default(0)  @map("xp_bonus_phenix")
+  xpBonusSerialWinner    Int @default(0)  @map("xp_bonus_serial_winner")
+  xpBonusBenjamin        Int @default(0)  @map("xp_bonus_benjamin")
+  bonusVainqueurParRang  Boolean @default(false) @map("bonus_vainqueur_par_rang")
 
   matches   Match[]
 
@@ -75,4 +80,29 @@ model MatchParticipant {
   @@unique([matchId, rank])
   @@index([playerId])
   @@map("match_participants")
+}
+
+model Guild {
+  id         Int           @id @default(autoincrement())
+  name       String        @unique
+  badgeIcon  String        @map("badge_icon")
+  badgeColor String        @map("badge_color")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  members    PlayerGuild[]
+
+  @@map("guilds")
+}
+
+model PlayerGuild {
+  playerId Int      @map("player_id")
+  guildId  Int      @map("guild_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  player   Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  guild    Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@id([playerId, guildId])
+  @@index([playerId])
+  @@index([guildId])
+  @@map("player_guilds")
 }

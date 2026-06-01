@@ -57,6 +57,17 @@ async function recalculateMatches(
       loserXPBeforeMap.set(l.playerId, playerXPBefore.get(l.playerId) ?? 0);
     });
 
+    // Count winner's consecutive wins in the season prior to this match
+    const currentIndex = sortedMatches.findIndex(m => m.id === match.id);
+    let winnerConsecutiveWinsBefore = 0;
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      const prev = sortedMatches[i];
+      const prevPart = prev.participants.find(p => p.playerId === winnerPart.playerId);
+      if (!prevPart) continue;
+      if (prevPart.rank === 1) winnerConsecutiveWinsBefore++;
+      else break;
+    }
+
     const newScores = calculateMatchResults(
       winnerPart.playerId,
       winnerPart.finishType as any,
@@ -64,7 +75,8 @@ async function recalculateMatches(
       playerLevels.get(winnerPart.playerId) ?? 0,
       config,
       playerXPBefore.get(winnerPart.playerId) ?? 0,
-      loserXPBeforeMap
+      loserXPBeforeMap,
+      winnerConsecutiveWinsBefore
     );
 
     for (const ns of newScores) {
@@ -113,7 +125,17 @@ seasonsRouter.get("/:id/leaderboard", async (req, res) => {
 
   const participations = await prisma.matchParticipant.findMany({
     where: { match: { seasonId } },
-    include: { player: true },
+    include: {
+      player: {
+        include: {
+          guilds: {
+            include: {
+              guild: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   type Agg = {
@@ -122,6 +144,7 @@ seasonsRouter.get("/:id/leaderboard", async (req, res) => {
     matchesPlayed: number;
     totalXP: number;
     wins: number;
+    guilds: { id: number; name: string; badgeIcon: string; badgeColor: string }[];
   };
   const byPlayer = new Map<number, Agg>();
 
@@ -133,6 +156,12 @@ seasonsRouter.get("/:id/leaderboard", async (req, res) => {
         matchesPlayed: 0,
         totalXP: 0,
         wins: 0,
+        guilds: p.player.guilds.map((pg: any) => ({
+          id: pg.guild.id,
+          name: pg.guild.name,
+          badgeIcon: pg.guild.badgeIcon,
+          badgeColor: pg.guild.badgeColor,
+        })),
       };
     entry.matchesPlayed += 1;
     entry.totalXP += p.xpEarned;
@@ -190,6 +219,10 @@ seasonsRouter.patch("/:id", requireAdminPassword, async (req, res) => {
       xpBonusJackpot: updated.xpBonusJackpot,
       xpBonusEgalite: updated.xpBonusEgalite,
       xpBonusTueurDeGeants: updated.xpBonusTueurDeGeants,
+      xpBonusPhenix: updated.xpBonusPhenix,
+      xpBonusSerialWinner: updated.xpBonusSerialWinner,
+      xpBonusBenjamin: updated.xpBonusBenjamin,
+      bonusVainqueurParRang: updated.bonusVainqueurParRang,
     });
   });
 
@@ -232,6 +265,10 @@ seasonsRouter.post("/:id/recalculate", requireAdminPassword, async (req, res) =>
       xpBonusJackpot: season.xpBonusJackpot,
       xpBonusEgalite: season.xpBonusEgalite,
       xpBonusTueurDeGeants: season.xpBonusTueurDeGeants,
+      xpBonusPhenix: season.xpBonusPhenix,
+      xpBonusSerialWinner: season.xpBonusSerialWinner,
+      xpBonusBenjamin: season.xpBonusBenjamin,
+      bonusVainqueurParRang: season.bonusVainqueurParRang,
     });
   });
 
