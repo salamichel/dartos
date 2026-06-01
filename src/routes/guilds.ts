@@ -37,6 +37,22 @@ export function calculateGuildRank(totalXP: number, totalBadgesCount: number, un
 
 // GET /guilds - List all guilds
 guildsRouter.get("/", async (_req, res) => {
+  let currentSeason = await prisma.season.findFirst({
+    where: { endedAt: null },
+    orderBy: { startedAt: "desc" },
+  });
+
+  if (!currentSeason) {
+    currentSeason = await prisma.season.findFirst({
+      orderBy: { startedAt: "desc" },
+    });
+  }
+
+  if (!currentSeason) {
+    return res.status(200).json([]);
+  }
+
+  const currentSeasonId = currentSeason.id;
   const guilds = await prisma.guild.findMany({
     include: {
       members: {
@@ -44,6 +60,11 @@ guildsRouter.get("/", async (_req, res) => {
           player: {
             include: {
               participations: {
+                where: {
+                  match: {
+                    seasonId: currentSeasonId,
+                  },
+                },
                 select: {
                   xpEarned: true,
                   medals: true,
