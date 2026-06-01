@@ -793,7 +793,7 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
 }
 .data-table tbody tr:hover { border-color: var(--accent); }
 .data-table td { display: block; padding: 0.2rem 0; }
-.data-table td:nth-child(1) { font-size: 1.4rem; font-weight: 900; color: rgba(255,255,255,0.06); position: absolute; left: 1rem; top: 0.8rem; }
+.data-table td:nth-child(1) { font-size: 1.4rem; font-weight: 900; position: absolute; left: 1rem; top: 0.8rem; }
 .data-table td:nth-child(2) { margin-left: 2.2rem; font-weight: 800; font-size: 1.1rem; color: white; }
 .data-table td:nth-child(3) { margin-left: 2.2rem; font-size: 0.75rem; color: var(--muted); }
 /* La 4ème colonne du tableau des guildes doit être visible sur mobile */
