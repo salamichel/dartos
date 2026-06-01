@@ -866,10 +866,27 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
 .data-table tbody tr:hover { border-color: var(--accent); }
 .data-table td { display: block; padding: 0.2rem 0; }
 .data-table td:nth-child(1) { font-size: 1.4rem; font-weight: 900; position: absolute; left: 1rem; top: 0.8rem; }
-.data-table td:nth-child(2) { margin-left: 2.2rem; font-weight: 800; font-size: 1.1rem; color: white; }
+.data-table td:nth-child(2) { margin-left: 2.2rem; margin-right: 6.5rem; font-weight: 800; font-size: 1.1rem; color: white; }
 .data-table td:nth-child(3) { margin-left: 2.2rem; font-size: 0.75rem; color: var(--muted); }
+
+/* Spécifique au classement de guildes sur mobile pour faire ressortir l'XP */
+#guild-ranking-table td:nth-child(3) {
+  position: absolute;
+  right: 1rem;
+  top: 0.9rem;
+  text-align: right;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--ok);
+  margin: 0;
+  background: rgba(62, 207, 142, 0.1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(62, 207, 142, 0.2);
+}
+
 /* La 4ème colonne du tableau des guildes doit être visible sur mobile */
-#guild-ranking-table td:nth-child(4) { display: block; margin-left: 2.2rem; font-size: 0.75rem; color: var(--muted); }
+#guild-ranking-table td:nth-child(4) { display: block; margin-left: 2.2rem; margin-right: 0.5rem; font-size: 0.75rem; color: var(--muted); margin-top: 0.4rem; }
 
 @media (min-width: 768px) {
   .data-table thead { display: table-header-group; background: var(--bg); }
@@ -879,6 +896,17 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
   .data-table td { display: table-cell; padding: 0.9rem 1rem; position: static; border-bottom: 1px solid var(--border); vertical-align: middle; }
   .data-table td:nth-child(1) { font-size: 1rem; font-weight: 700; color: var(--text); position: static; }
   .data-table td:nth-child(2) { margin: 0; }
+  
+  /* Restaurer le comportement par défaut de la cellule XP sur desktop */
+  #guild-ranking-table td:nth-child(3) {
+    position: static;
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+    background: none;
+    padding: 0.9rem 1rem;
+    border: none;
+  }
   .data-table td:nth-child(3) { display: table-cell; }
   /* La 4ème colonne du tableau des guildes doit être visible sur desktop */
   #guild-ranking-table td:nth-child(4) { display: table-cell; margin: 0; }
