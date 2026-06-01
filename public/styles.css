@@ -109,7 +109,7 @@ button[type="submit"]:hover:not(:disabled), #lb-refresh:hover, #ml-refresh:hover
 }
 #lb-table tbody tr:hover { border-color: var(--accent); }
 #lb-table td { display: block; padding: 0.2rem 0; }
-#lb-table td:nth-child(1) { font-size: 1.4rem; font-weight: 900; color: rgba(255,255,255,0.06); position: absolute; left: 1rem; top: 0.8rem; }
+#lb-table td:nth-child(1) { font-size: 1.4rem; font-weight: 900; position: absolute; left: 1rem; top: 0.8rem; }
 #lb-table td:nth-child(2) { margin-left: 2.2rem; font-weight: 800; font-size: 1.1rem; color: white; }
 #lb-table td:nth-child(3) { margin-left: 2.2rem; font-size: 0.75rem; color: var(--muted); }
 #lb-table td:nth-child(4) { display: none; }

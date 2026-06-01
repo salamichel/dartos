@@ -548,8 +548,8 @@ function addNewPlayerInline(btn, selectEl) {
 
 function refreshParticipantOptions() {
   playersGridEl.innerHTML = "";
-  // Sort players by totalXP descending for the grid
-  const sortedPlayers = [...players].sort((a, b) => b.totalXP - a.totalXP);
+  // Sort players by name ascending for the grid
+  const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
   
   sortedPlayers.forEach(p => {
     const card = document.createElement("div");
@@ -917,7 +917,7 @@ async function refreshLeaderboard() {
         <td><strong>${r.totalXP} XP</strong></td>
         <td>
           <div class="xp-progress-bg">
-            <div class="xp-progress-bar" data-pct="${progressPercent}" style="width:0%"></div>
+            <div class="xp-progress-bar level-${levelSlug}" data-pct="${progressPercent}" style="width:0%"></div>
           </div>
           <div class="xp-next-label">${xpLabel}</div>
         </td>
