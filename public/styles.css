@@ -905,7 +905,7 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
     color: inherit;
     background: none;
     padding: 0.9rem 1rem;
-    border: none;
+    border-bottom: 1px solid var(--border);
   }
   .data-table td:nth-child(3) { display: table-cell; }
   /* La 4ème colonne du tableau des guildes doit être visible sur desktop */
