@@ -2,7 +2,7 @@
 
 // ----- Admin password -----
 let adminPassword = localStorage.getItem("adminPassword") || "";
-const SPLASH_VERSION = "2.0";
+const SPLASH_VERSION = "2.01";
 const SPLASH_KEY = "splashSeenVersion";
 
 function updateLockBtn() {
