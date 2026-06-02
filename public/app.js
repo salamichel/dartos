@@ -593,7 +593,7 @@ function renderSelectedList() {
       row.innerHTML = `
         <div class="rank">💀</div>
         <div class="p-name">${escapeHtml(player.name)}</div>
-        <input type="number" class="p-score" placeholder="Score" min="1" max="301" required />
+        <input type="tel" class="p-score" placeholder="Score" min="1" max="301" pattern="[0-9]*" required />
       `;
       // Focus score if it's the last added
       if (i === selectedPlayerIds.length - 1) {
