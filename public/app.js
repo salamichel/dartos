@@ -723,15 +723,61 @@ function generateAllEmojis() {
   // On définit les plages Unicode principales contenant des emojis
   // Le préfixe "0x" indique que ce sont des nombres hexadécimaux
   const emojiRanges = [
-    [0x1F600, 0x1F64F], // Les smileys de base (Emoticons)
-    [0x1F300, 0x1F5FF], // Symboles et pictogrammes divers (animaux, nourriture...)
-    [0x1F680, 0x1F6FF], // Transport et cartes (véhicules, lieux...)
-    //[0x1F900, 0x1F9FF], // Symboles supplémentaires (emojis récents)
-    [0x2600, 0x26FF],   // Symboles divers (soleil, neige, cœur, échecs...)
-    [0x2700, 0x27BF]    // Dingbats (ciseaux, avions, coches...)
+    // --- 1. Smileys et Émotions ---
+    [0x1F600, 0x1F64F], // Visages classiques 😀 😂 🥰 😭 😡
+    [0x1F900, 0x1F9FF], // Nouveaux smileys, monstres, gestes 🤔 🤪 🦖 🤖 🤷
+    
+    // --- 2. Extensions récentes ---
+    [0x1FA70, 0x1FAFF], // Symboles étendus-A (nouveautés) 🫀 🥷 🪰 🧋 🥸
+
+    // --- 3. Nature, Animaux, Nourriture et Objets ---
+    [0x1F300, 0x1F5FF], // Plantes, animaux, nourriture 🌲 🐈 🍎 🍔 📱
+
+    // --- 4. Transports et Lieux ---
+    [0x1F680, 0x1F6FF], // Véhicules, bâtiments, cartes 🚀 🚗 🚦 🏨 🛳️
+
+    // --- 5. Symboles classiques et Météo ---
+    [0x2600, 0x26FF],   // Symboles divers ☀️ ☂️ ☢️ ☕ ☮️
+    [0x2700, 0x27BF],   // Dingbats (ornements) ✂️ ✈️ ✔️ 🌸 ✨
+    [0x2B00, 0x2BFF],   // Flèches et symboles géométriques ⬅️ ⬛ ⭐ ⭕
+
+    // --- 6. Drapeaux (Indicateurs régionaux) ---
+    [0x1F1E6, 0x1F1FF], // Lettres A-Z qui se combinent pour les drapeaux 🇦 🇧 🇨 (ex: 🇫🇷)
+
+    // --- 7. Jeux de société ---
+    [0x1F0A0, 0x1F0FF], // Cartes à jouer ♠️ ♥️ ♦️ ♣️ 🃏
+    [0x1F000, 0x1F02B], // Tuiles de Mahjong 🀄 🀅 🀆
+    [0x1F030, 0x1F093]  // Dominos 🁣 🁫 🂓
   ];
 
   const emojis = []; // Le tableau qui va stocker tous nos emojis
+
+  // 1. Notre filtre pour ne garder que les vrais emojis
+  const isRealEmoji = /\p{Emoji_Presentation}/u;
+    
+  // 2. Notre liste noire pour cibler tout ce qui ressemble à une direction
+  // Elle inclut les flèches simples, diagonales, doubles, et les boutons de lecture
+  const isArrow = /[⬅⬆⬇➡↗↘↙↖↕↔↩↪⤴⤵◀▶🔼🔽⏪⏩⏫⏬]/;
+
+  // 3. Filtre mis à jour : Les signes du zodiaque ont été retirés de la liste noire !
+  // \u{1F550}-\u{1F567} : Horloges
+  // \u{1F311}-\u{1F318} : Phases lunaires
+  // \u{1F191}-\u{1F251} : Boutons texte (ex: CLR, COOL)
+  // \u{1F5B0}-\u{1F5FE} : Vieux ordis, dossiers et fenêtres
+  // \u{2B00}-\u{2BFF}   : Symboles géométriques et flèches
+  // \u{26E0}-\u{26E7}   : Symboles cartographiques obscurs
+  const isUseless = /[\u{1F550}-\u{1F567}\u{1F311}-\u{1F318}\u{1F191}-\u{1F251}\u{1F5B0}-\u{1F5FE}\u{2B00}-\u{2BFF}\u{26E0}-\u{26E7}]/u;
+
+  for (const range of emojiRanges) {
+    for (let code = range[0]; code <= range[1]; code++) {
+      const caractere = String.fromCodePoint(code);
+      
+      // On teste le caractère avant de l'ajouter au tableau
+      if (isRealEmoji.test(caractere)) {
+        emojis.push(caractere);
+      }
+    }
+  }
 
   // On parcourt chaque plage de notre liste
   for (const range of emojiRanges) {
@@ -943,7 +989,7 @@ async function refreshMatchesList() {
         .map((p) => {
           const detail = p.rank === 1 ? ` · Finition ${p.finishType}` : ` · Reste ${p.scoreLeft} pt(s)`;
           const xp = `<span class="xp-gain plus">+${p.xpEarned} XP</span>`;
-          const medalsHtml = (p.medals || []).map((m) => `<span class="medal-icon" title="${m}">${MEDALS_MAP[m] || m}</span>`).join("");
+          const medalsHtml = (p.medals || []).map((m) => `<span class="medal-icon" title="${getMedalTitle(m)}">${getMedalIcon(m)}</span>`).join("");
           return `<li><span class="match-li-left"><strong>${p.rank === 1 ? "🏆" : p.rank + "."}</strong> ${escapeHtml(p.player.name)}<span class="muted" style="font-size:0.8rem">${detail}</span></span><span class="match-li-right">${xp}${medalsHtml}</span></li>`;
         })
         .join("");
