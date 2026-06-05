@@ -2,7 +2,7 @@
 
 // ----- Admin password -----
 let adminPassword = localStorage.getItem("adminPassword") || "";
-const SPLASH_VERSION = "2.01";
+const SPLASH_VERSION = "2.02";
 const SPLASH_KEY = "splashSeenVersion";
 
 function updateLockBtn() {
@@ -64,7 +64,23 @@ const MEDALS_MAP = {
   PHENIX: "🔥",
   SERIAL_WINNER: "🔥🔥",
   BENJAMIN: "🥉",
+  LOTTERY_WINNER: "🍀",
 };
+
+function getMedalIcon(m) {
+  if (m.startsWith("LOTTERY_WINNER:")) {
+    const emoji = m.split(":")[1];
+    return "🍀" + emoji;
+  }
+  return MEDALS_MAP[m] || m;
+}
+
+function getMedalTitle(m) {
+  if (m.startsWith("LOTTERY_WINNER:")) {
+    return "Gagnant Tombola !";
+  }
+  return m;
+}
 
 function daysUntil(endedAt) {
   if (!endedAt) return null;
@@ -188,9 +204,10 @@ async function refreshPlayers() {
   for (const p of players) {
     const li = document.createElement("li");
     const badgesEntries = Object.entries(p.badges || {});
+    // Remplacez la définition de badgesHtml par :
     const badgesHtml = badgesEntries.length
       ? `<span class="player-badges">${badgesEntries
-          .map(([name, count]) => `<span class="medal-icon" title="${name}">${MEDALS_MAP[name] || name}${count > 1 ? `×${count}` : ""}</span>`)
+          .map(([name, count]) => `<span class="medal-icon" title="${getMedalTitle(name)}">${getMedalIcon(name)}${count > 1 ? `×${count}` : ""}</span>`)
           .join("")}</span>`
       : "";
     li.innerHTML = `
@@ -387,6 +404,7 @@ const SEASON_DEFAULTS = {
   xpBonusPhenix: 30,
   xpBonusSerialWinner: 40,
   xpBonusBenjamin: 15,
+  xpBonusLottery: 20, // New default for lottery
   bonusVainqueurParRang: false,
 };
 
@@ -404,6 +422,7 @@ const SEASON_FIELD_MAP = {
   xpBonusPhenix: "s-xpPhenix",
   xpBonusSerialWinner: "s-xpSerialWinner",
   xpBonusBenjamin: "s-xpBenjamin",
+  xpBonusLottery: "s-xpLottery", // New field map for lottery
 };
 
 function formatDateForInput(dateStr) {
@@ -694,6 +713,41 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
   }
 });
 
+// Helper to extract emojis from a string
+function extractEmojis(str) {
+  const emojiRegex = /[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F191}-\u{1F251}\u{1F004}\u{1F0CF}\u{1F170}-\u{1F171}\u{1F17E}-\u{1F17F}\u{1F18E}\u{3030}\u{2B50}\u{2B55}\u{2934}-\u{2935}\u{2B05}-\u{2B07}\u{2B1B}-\u{2B1C}\u{3297}\u{3299}\u{1F004}\u{1F0CF}\u{1F170}-\u{1F171}\u{1F17E}-\u{1F17F}\u{1F18E}\u{3030}\u{2B50}\u{2B55}\u{2934}-\u{2935}\u{2B05}-\u{2B07}\u{2B1B}-\u{2B1C}\u{3297}\u{3299}]/gu;
+  return str.match(emojiRegex) || [];
+}
+
+function generateAllEmojis() {
+  // On définit les plages Unicode principales contenant des emojis
+  // Le préfixe "0x" indique que ce sont des nombres hexadécimaux
+  const emojiRanges = [
+    [0x1F600, 0x1F64F], // Les smileys de base (Emoticons)
+    [0x1F300, 0x1F5FF], // Symboles et pictogrammes divers (animaux, nourriture...)
+    [0x1F680, 0x1F6FF], // Transport et cartes (véhicules, lieux...)
+    //[0x1F900, 0x1F9FF], // Symboles supplémentaires (emojis récents)
+    [0x2600, 0x26FF],   // Symboles divers (soleil, neige, cœur, échecs...)
+    [0x2700, 0x27BF]    // Dingbats (ciseaux, avions, coches...)
+  ];
+
+  const emojis = []; // Le tableau qui va stocker tous nos emojis
+
+  // On parcourt chaque plage de notre liste
+  for (const range of emojiRanges) {
+    const debut = range[0];
+    const fin = range[1];
+
+    // On crée une boucle qui compte du début à la fin de la plage
+    for (let codePoint = debut; codePoint <= fin; codePoint++) {
+      // On transforme le code en emoji et on l'ajoute au tableau
+      emojis.push(String.fromCodePoint(codePoint));
+    }
+  }
+
+  return emojis;
+}
+
 function showMatchSummary(match) {
   const overlay = document.getElementById("modal-overlay");
   const list = document.getElementById("modal-results-list");
@@ -707,7 +761,7 @@ function showMatchSummary(match) {
   sorted.forEach((p) => {
     const row = document.createElement("div");
     row.className = "modal-row" + (p.rank === 1 ? " winner" : "");
-    const medalsHtml = (p.medals || []).map((m) => `<span>${MEDALS_MAP[m] || m}</span>`).join(" ");
+    const medalsHtml = (p.medals || []).map((m) => `<span title="${getMedalTitle(m)}">${getMedalIcon(m)}</span>`).join(" ");
     row.innerHTML = `
       <div class="modal-player">
         <span class="name">${escapeHtml(p.player.name)}</span>
@@ -717,6 +771,142 @@ function showMatchSummary(match) {
     `;
     list.appendChild(row);
   });
+
+  // --- Tombola / Machine à sous Setup ---
+  const activeSeason = seasons.find(s => s.id === match.seasonId) || seasons[0];
+  const xpBonusLottery = activeSeason?.xpBonusLottery ?? 20;
+
+  const lotterySection = document.getElementById("lottery-section");
+  const spinBtn = document.getElementById("spin-button");
+  const resultText = document.getElementById("lottery-result");
+
+  if (xpBonusLottery > 0) {
+    lotterySection.classList.remove("hidden");
+    spinBtn.disabled = false;
+    resultText.innerHTML = `Misez sur vos émojis ! Seuls les <strong>3 premiers émojis</strong> de votre pseudo sont éligibles. Chaque émoji tiré identique rapporte <strong>${xpBonusLottery} XP</strong> !`;
+
+    // Extract max 3 emojis from each participant
+    let participantEmojis = [];
+    match.participants.forEach(p => {
+      const emojis = extractEmojis(p.player.name).slice(0, 3);
+      participantEmojis = participantEmojis.concat(emojis);
+    });
+
+    // Extract max 3 emojis from all players in database to populate pool
+    let allPlayerEmojis = [];
+    players.forEach(p => {
+      const emojis = extractEmojis(p.name).slice(0, 3);
+      allPlayerEmojis = allPlayerEmojis.concat(emojis);
+    });
+
+    const genericEmojis = generateAllEmojis();
+    const fullEmojiPool = Array.from(new Set([...participantEmojis, ...allPlayerEmojis, ...genericEmojis]));
+
+    // Fill the reels with initial randomly cycling emojis
+    const reels = [
+      document.getElementById("slot-reel-1"),
+      document.getElementById("slot-reel-2"),
+      document.getElementById("slot-reel-3")
+    ];
+
+    reels.forEach(reel => {
+      reel.innerHTML = "";
+      // Create a stack of emojis for scrolling effect
+      for (let i = 0; i < 20; i++) {
+        const item = document.createElement("div");
+        item.textContent = fullEmojiPool[Math.floor(Math.random() * fullEmojiPool.length)];
+        reel.appendChild(item);
+      }
+    });
+
+    // Remove any previous listener by cloning the button
+    const newSpinBtn = spinBtn.cloneNode(true);
+    spinBtn.parentNode.replaceChild(newSpinBtn, spinBtn);
+
+    newSpinBtn.addEventListener("click", async () => {
+      newSpinBtn.disabled = true;
+      resultText.textContent = "🎰 Tirage en cours... Que la chance soit avec vous !";
+
+      const drawnEmojis = [];
+      const animations = [];
+
+      reels.forEach((reel, reelIndex) => {
+        // Choose target emoji
+        const targetEmoji = fullEmojiPool[Math.floor(Math.random() * fullEmojiPool.length)];
+        drawnEmojis.push(targetEmoji);
+
+        // Put the target emoji at the very end of the reel
+        const targetItem = document.createElement("div");
+        targetItem.textContent = targetEmoji;
+        reel.appendChild(targetItem);
+
+        // Calculate scroll height (each item is 100px)
+        const totalItems = reel.children.length;
+        const targetScrollY = -((totalItems - 1) * 100);
+
+        reel.style.transition = "none";
+        reel.style.transform = "translateY(0)";
+
+        // Force reflow
+        reel.offsetHeight;
+
+        animations.push(new Promise(resolve => {
+          setTimeout(() => {
+            reel.style.transition = `transform ${1.5 + reelIndex * 0.5}s cubic-bezier(0.25, 0.1, 0.25, 1.0)`;
+            reel.style.transform = `translateY(${targetScrollY}px)`;
+            setTimeout(() => {
+              resolve();
+            }, 1500 + reelIndex * 500);
+          }, 50);
+        }));
+      });
+
+      await Promise.all(animations);
+
+      // Animation done, calculate results !
+      const playerGains = [];
+      let resultHtmlArr = [];
+
+      match.participants.forEach(p => {
+        const playerEmojis = extractEmojis(p.player.name).slice(0, 3);
+        let matchesCount = 0;
+        let wonEmojis = []; 
+
+        drawnEmojis.forEach(drawn => {
+          if (playerEmojis.includes(drawn)) {
+            matchesCount++;
+            wonEmojis.push(drawn);
+          }
+        });
+
+        if (matchesCount > 0) {
+          const wonXP = matchesCount * xpBonusLottery;
+          playerGains.push({ playerId: p.playerId, xpBonus: wonXP, emojis: wonEmojis });
+          resultHtmlArr.push(`🎉 <strong>${escapeHtml(p.player.name)}</strong> gagne <strong>+${wonXP} XP</strong> ! (${matchesCount} correspondances)`);
+        }
+      });
+
+      if (playerGains.length > 0) {
+        try {
+          // Send gains to server
+          await api.req(`/matches/${match.id}/lottery`, {
+            method: "POST",
+            body: JSON.stringify({ playerGains })
+          });
+          resultText.innerHTML = resultHtmlArr.join("<br>");
+          showToast("Bonus XP de la tombola enregistrés ! ✓", "ok");
+          await refreshLeaderboard();
+        } catch (err) {
+          showToast("Erreur lors de l'enregistrement de la tombola", "err");
+          resultText.textContent = "Erreur de connexion au serveur.";
+        }
+      } else {
+        resultText.textContent = "😢 Pas de chance cette fois-ci ! Aucun emoji correspondant.";
+      }
+    });
+  } else {
+    lotterySection.classList.add("hidden");
+  }
 
   overlay.classList.remove("hidden");
 }
@@ -751,7 +941,7 @@ async function refreshMatchesList() {
       const sorted = [...m.participants].sort((a, b) => a.rank - b.rank);
       const lis = sorted
         .map((p) => {
-          const detail = p.rank === 1 ? ` · Finition ${p.finishType}` : ` · Reste ${p.scoreLeft} pts`;
+          const detail = p.rank === 1 ? ` · Finition ${p.finishType}` : ` · Reste ${p.scoreLeft} pt(s)`;
           const xp = `<span class="xp-gain plus">+${p.xpEarned} XP</span>`;
           const medalsHtml = (p.medals || []).map((m) => `<span class="medal-icon" title="${m}">${MEDALS_MAP[m] || m}</span>`).join("");
           return `<li><span class="match-li-left"><strong>${p.rank === 1 ? "🏆" : p.rank + "."}</strong> ${escapeHtml(p.player.name)}<span class="muted" style="font-size:0.8rem">${detail}</span></span><span class="match-li-right">${xp}${medalsHtml}</span></li>`;
@@ -1334,7 +1524,7 @@ async function ensureAdminPassword() {
   const skipBtn   = document.getElementById("splash-skip");
   const ctaBtn    = document.getElementById("splash-cta");
   const recallBtn = document.getElementById("splash-btn");
-  const TOTAL = 4;
+  const TOTAL = 5;
   let current = 0;
 
   function goTo(n) {

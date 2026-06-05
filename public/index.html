@@ -298,6 +298,9 @@
           <label>🥉 Benjamin
             <input type="number" id="s-xpBenjamin" value="15" />
           </label>
+          <label>🎰 Tombola Bonus
+            <input type="number" id="s-xpLottery" value="20" />
+          </label>
         </div>
         <h3>⚖️ Règles avancées</h3>
         <div class="rules-config">
@@ -360,6 +363,18 @@
           </ul>
         </div>
 
+        <!-- NOUVELLE PAGE TOMBOLA -->
+        <div class="splash-step">
+          <span class="splash-emoji">🎰</span>
+          <h2 class="splash-title">La Tombola des Émojis</h2>
+          <p class="splash-sub">Le jackpot de fin de partie 🍀</p>
+          <ul class="splash-features">
+            <li>🎟️ <strong>Vos tickets :</strong> Les 3 premiers émojis de votre pseudo.</li>
+            <li>🎲 <strong>Le tirage :</strong> 3 émojis tirés au hasard à la fin du match.</li>
+            <li>🏆 <strong>Le Jackpot :</strong> Chaque correspondance offre un bonus XP et une médaille unique (ex: 🍀🔥) !</li>
+          </ul>
+        </div>
+
         <div class="splash-step">
           <span class="splash-emoji">🏆</span>
           <h2 class="splash-title">En avant !</h2>
@@ -380,6 +395,7 @@
           <span class="splash-dot" data-dot="1"></span>
           <span class="splash-dot" data-dot="2"></span>
           <span class="splash-dot" data-dot="3"></span>
+          <span class="splash-dot" data-dot="4"></span>
         </div>
         <button id="splash-next" class="splash-nav-btn" aria-label="Suivant">›</button>
       </div>
@@ -398,6 +414,20 @@
         </header>
         
         <div id="modal-results-list"></div>
+
+        <!-- Section Tombola / Mini Machine à Sous -->
+        <div id="lottery-section" class="lottery-section hidden">
+          <h2>🎰 Tombola Bonus 🎰</h2>
+          <div id="lottery-result" class="lottery-result">Misez sur vos emojis !</div>
+          
+          <div class="slot-machine">
+            <div class="reel-container"><div id="slot-reel-1" class="reel"></div></div>
+            <div class="reel-container"><div id="slot-reel-2" class="reel"></div></div>
+            <div class="reel-container"><div id="slot-reel-3" class="reel"></div></div>
+          </div>
+
+          <button id="spin-button">Lancer la machine !</button>
+        </div>
         
         <div class="modal-actions">
           <button id="modal-close">CÉLÉBRER & CONTINUER</button>

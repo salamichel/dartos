@@ -144,6 +144,54 @@ matchesRouter.post("/", async (req, res) => {
   res.status(201).json(match);
 });
 
+// POST /matches/:id/lottery — record lottery bonus XP for participants.
+matchesRouter.post("/:id/lottery", async (req, res) => {
+  const matchId = Number(req.params.id);
+  const { playerGains } = req.body; // Array of { playerId: number, xpBonus: number }
+
+  if (!Array.isArray(playerGains)) {
+    return res.status(400).json({ error: "Invalid gains format" });
+  }
+
+  try {
+    for (const gain of playerGains) {
+      const participant = await prisma.matchParticipant.findUnique({
+        where: { matchId_playerId: { matchId, playerId: gain.playerId } }
+      });
+      if (participant) {
+        const updatedMedals = Array.isArray(participant.medals) ? [...participant.medals] : [];
+        
+        const wonEmojis = gain.emojis || [];
+        wonEmojis.forEach((emoji: string) => {
+          const medalStr = `LOTTERY_WINNER:${emoji}`;
+          if (!updatedMedals.includes(medalStr)) {
+            updatedMedals.push(medalStr);
+          }
+        });
+        // -------------------------------------------------------
+
+        await prisma.matchParticipant.update({
+          where: { matchId_playerId: { matchId, playerId: gain.playerId } },
+          data: {
+            xpEarned: participant.xpEarned + gain.xpBonus,
+            xpBonusLotteryEarned: gain.xpBonus,
+            medals: updatedMedals
+          }
+        });
+      }
+    }
+
+    const updatedMatch = await prisma.match.findUnique({
+      where: { id: matchId },
+      include: { participants: { include: { player: true } } }
+    });
+
+    res.json(updatedMatch);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 matchesRouter.get("/", async (req, res) => {
   const seasonId = req.query.seasonId ? Number(req.query.seasonId) : undefined;
   const matches = await prisma.match.findMany({
