@@ -109,7 +109,7 @@ button[type="submit"]:hover:not(:disabled), #lb-refresh:hover, #ml-refresh:hover
 }
 #lb-table tbody tr:hover { border-color: var(--accent); }
 #lb-table td { display: block; padding: 0.2rem 0; }
-#lb-table td:nth-child(1) { font-size: 1.4rem; font-weight: 900; color: rgba(255,255,255,0.06); position: absolute; left: 1rem; top: 0.8rem; }
+#lb-table td:nth-child(1) { font-size: 1.4rem; font-weight: 900; position: absolute; left: 1rem; top: 0.8rem; }
 #lb-table td:nth-child(2) { margin-left: 2.2rem; font-weight: 800; font-size: 1.1rem; color: white; }
 #lb-table td:nth-child(3) { margin-left: 2.2rem; font-size: 0.75rem; color: var(--muted); }
 #lb-table td:nth-child(4) { display: none; }
@@ -228,19 +228,91 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
 }
 
 /* --- Participant Rows in Match Entry --- */
-.participant-row {
-  display: grid;
-  grid-template-columns: 3rem 1fr auto;
-  grid-template-rows: auto auto;
-  grid-template-areas:
-    "rank name remove"
-    "rank score score";
+.quick-players-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+  justify-content: center;
+}
+
+.quick-player-card {
   background: var(--panel-light);
   border: 1px solid var(--border);
-  padding: 1rem;
-  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+  min-width: 80px;
+}
+
+.quick-player-card.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.quick-player-card .p-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-participants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.selected-participant-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  gap: 0.5rem;
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.selected-participant-row.winner {
+  border-left: 4px solid gold;
+  background: rgba(255, 215, 0, 0.05);
+}
+
+.selected-participant-row .rank {
+  font-size: 1.2rem;
+  width: 24px;
+}
+
+.selected-participant-row .p-name {
+  flex: 1;
+  font-weight: 700;
+}
+
+.selected-participant-row input.p-score {
+  width: 80px;
+  text-align: center;
+  padding: 0.4rem;
+}
+
+.selected-participant-row select.p-finish {
+  width: auto;
+  padding: 0.4rem;
+}
+
+.hidden {
+  display: none !important;
 }
 .participant-row.winner-row { border-color: rgba(255, 215, 0, 0.3); background: rgba(255, 215, 0, 0.03); }
 
@@ -794,10 +866,26 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
 .data-table tbody tr:hover { border-color: var(--accent); }
 .data-table td { display: block; padding: 0.2rem 0; }
 .data-table td:nth-child(1) { font-size: 1.4rem; font-weight: 900; position: absolute; left: 1rem; top: 0.8rem; }
-.data-table td:nth-child(2) { margin-left: 2.2rem; font-weight: 800; font-size: 1.1rem; color: white; }
+.data-table td:nth-child(2) { margin-left: 2.2rem; margin-right: 6.5rem; font-weight: 800; font-size: 1.1rem; color: white; }
 .data-table td:nth-child(3) { margin-left: 2.2rem; font-size: 0.75rem; color: var(--muted); }
+
+/* Spécifique au classement de guildes sur mobile pour faire ressortir l'XP */
+#guild-ranking-table td:nth-child(3) {
+  position: absolute;
+  right: 1rem;
+  top: 0.9rem;
+  text-align: right;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--ok);
+  margin: 0;
+  background: rgba(62, 207, 142, 0.1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
+}
+
 /* La 4ème colonne du tableau des guildes doit être visible sur mobile */
-#guild-ranking-table td:nth-child(4) { display: block; margin-left: 2.2rem; font-size: 0.75rem; color: var(--muted); }
+#guild-ranking-table td:nth-child(4) { display: block; margin-left: 2.2rem; margin-right: 0.5rem; font-size: 0.75rem; color: var(--muted); margin-top: 0.4rem; }
 
 @media (min-width: 768px) {
   .data-table thead { display: table-header-group; background: var(--bg); }
@@ -807,6 +895,17 @@ form h3 { margin: 1.2rem 0 0.5rem; color: var(--muted); font-size: 0.85rem; text
   .data-table td { display: table-cell; padding: 0.9rem 1rem; position: static; border-bottom: 1px solid var(--border); vertical-align: middle; }
   .data-table td:nth-child(1) { font-size: 1rem; font-weight: 700; color: var(--text); position: static; }
   .data-table td:nth-child(2) { margin: 0; }
+  
+  /* Restaurer le comportement par défaut de la cellule XP sur desktop */
+  #guild-ranking-table td:nth-child(3) {
+    position: static;
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+    background: none;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
   .data-table td:nth-child(3) { display: table-cell; }
   /* La 4ème colonne du tableau des guildes doit être visible sur desktop */
   #guild-ranking-table td:nth-child(4) { display: table-cell; margin: 0; }

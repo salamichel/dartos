@@ -84,7 +84,7 @@ Returns the global leaderboard with RPG-style progression.
   {
     "id": 1,
     "name": "Alice",
-    "totalXP": 1250,
+    "totalXP": 1260,
     "matchCount": 8,
     "xpPerMatch": 156.25,
     "level": "Lanceur du Dimanche"
