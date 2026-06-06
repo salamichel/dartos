@@ -69,6 +69,7 @@ const seasonRulesSchema = z.object({
   xpBonusPhenix: z.number().int().min(0).optional(),
   xpBonusSerialWinner: z.number().int().min(0).optional(),
   xpBonusBenjamin: z.number().int().min(0).optional(),
+  xpBonusLottery: z.number().int().min(0).optional(), // New: Bonus XP for lottery
   bonusVainqueurParRang: z.boolean().optional()
 });
 

@@ -80,9 +80,28 @@ async function recalculateMatches(
     );
 
     for (const ns of newScores) {
+      const existingPart = match.participants.find(p => p.playerId === ns.playerId);
+      const lotteryBonus = (existingPart as any)?.xpBonusLotteryEarned ?? 0;
+
+      // --- NOUVEAU : Préserver TOUTES les médailles de loterie ---
+      const updatedMedals = [...ns.medals];
+      const existingMedals = Array.isArray((existingPart as any)?.medals) ? (existingPart as any).medals : [];
+      
+      const lotteryMedals = existingMedals.filter((m: string) => m.startsWith("LOTTERY_WINNER:"));
+      lotteryMedals.forEach((m: string) => {
+        if (!updatedMedals.includes(m)) {
+          updatedMedals.push(m);
+        }
+      });
+      // -----------------------------------------------------------
+
       await tx.matchParticipant.update({
         where: { matchId_playerId: { matchId: match.id, playerId: ns.playerId } },
-        data: { xpBefore: ns.xpBefore, xpEarned: ns.xpEarned, medals: ns.medals },
+        data: { 
+          xpBefore: ns.xpBefore, 
+          xpEarned: ns.xpEarned + lotteryBonus,
+          medals: updatedMedals 
+        },
       });
     }
   }
