@@ -428,7 +428,15 @@ const SEASON_FIELD_MAP = {
 function formatDateForInput(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  return d.toISOString().slice(0, 16);
+  
+  // Obtenir les composants de la date dans le fuseau horaire local
+  const year = d.getFullYear();
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const day = d.getDate().toString().padStart(2, '0');
+  const hours = d.getHours().toString().padStart(2, '0');
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 function editSeason(s) {
@@ -740,12 +748,12 @@ function generateAllEmojis() {
     [0x2B00, 0x2BFF],   // Flèches et symboles géométriques ⬅️ ⬛ ⭐ ⭕
 
     // --- 6. Drapeaux (Indicateurs régionaux) ---
-    [0x1F1E6, 0x1F1FF], // Lettres A-Z qui se combinent pour les drapeaux 🇦 🇧 🇨 (ex: 🇫🇷)
+    // [0x1F1E6, 0x1F1FF], // Lettres A-Z qui se combinent pour les drapeaux 🇦 🇧 🇨 (ex: 🇫🇷)
 
     // --- 7. Jeux de société ---
     [0x1F0A0, 0x1F0FF], // Cartes à jouer ♠️ ♥️ ♦️ ♣️ 🃏
-    [0x1F000, 0x1F02B], // Tuiles de Mahjong 🀄 🀅 🀆
-    [0x1F030, 0x1F093]  // Dominos 🁣 🁫 🂓
+    // [0x1F000, 0x1F02B], // Tuiles de Mahjong 🀄 🀅 🀆
+    // [0x1F030, 0x1F093]  // Dominos 🁣 🁫 🂓
   ];
 
   const emojis = [];
@@ -1015,7 +1023,7 @@ async function refreshMatchesList() {
 function editMatch(m) {
   document.getElementById("m-id").value = m.id;
   // document.getElementById("m-season").value = m.seasonId; // Removed season selection
-  document.getElementById("m-playedAt").value = new Date(m.playedAt).toISOString().slice(0, 16);
+  document.getElementById("m-playedAt").value = formatDateForInput(m.playedAt);
   document.getElementById("match-form-title").textContent = "Modifier le match #" + m.id;
 
   participantsEl.innerHTML = "";
