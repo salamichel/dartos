@@ -519,7 +519,11 @@ document.getElementById("season-form").addEventListener("submit", async (e) => {
 });
 
 // ----- Match form -----
-const participantsEl = document.getElementById("m-participants");
+const playersGridEl = document.getElementById("m-players-grid");
+const selectedListEl = document.getElementById("m-selected-list");
+const submitQuickBtn = document.getElementById("m-submit-quick");
+
+let selectedPlayerIds = [];
 
 function addNewPlayerInline(btn, selectEl) {
   const wrap = btn.closest(".p-select-wrap");
@@ -569,129 +573,90 @@ function addNewPlayerInline(btn, selectEl) {
   });
 }
 
-function addParticipantRow() {
-  const row = document.createElement("div");
-  const i = participantsEl.children.length;
-  row.className = "participant-row" + (i === 0 ? " winner-row" : "");
-
-  if (i === 0) {
-    row.innerHTML = `
-      <div class="rank">🏆</div>
-      <div class="p-select-wrap">
-        <select class="p-select" required></select>
-        <button type="button" class="new-player-btn">➕ Nouveau joueur</button>
-      </div>
-      <select class="p-finish" title="Finition">
-        <option value="SIMPLE">Finition SIMPLE</option>
-        <option value="DOUBLE">Finition DOUBLE ✖️2</option>
-        <option value="TRIPLE">Finition TRIPLE / BULLE ✖️3</option>
-      </select>
-      <div style="width: 32px"></div>
-    `;
-  } else {
-    row.innerHTML = `
-      <div class="rank">💀</div>
-      <div class="p-select-wrap">
-        <select class="p-select" required></select>
-        <button type="button" class="new-player-btn">➕ Nouveau joueur</button>
-      </div>
-      <input type="number" class="p-score" placeholder="Score restant" min="1" max="301" required />
-      <button type="button" class="remove" title="Supprimer">×</button>
-    `;
-    row.querySelector(".remove").addEventListener("click", () => {
-      row.remove();
-      refreshRanks();
-    });
-  }
-
-  const sel = row.querySelector(".p-select");
-  row.querySelector(".new-player-btn").addEventListener("click", (e) => {
-    e.preventDefault();
-    addNewPlayerInline(e.currentTarget, sel);
+function refreshParticipantOptions() {
+  playersGridEl.innerHTML = "";
+  // Sort players by name ascending for the grid
+  const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
+  
+  sortedPlayers.forEach(p => {
+    const card = document.createElement("div");
+    card.className = "quick-player-card" + (selectedPlayerIds.includes(p.id) ? " selected" : "");
+    card.innerHTML = `<span class="p-name">${escapeHtml(p.name)}</span>`;
+    card.addEventListener("click", () => togglePlayerSelection(p.id));
+    playersGridEl.appendChild(card);
   });
+}
 
-  participantsEl.appendChild(row);
+function togglePlayerSelection(playerId) {
+  const idx = selectedPlayerIds.indexOf(playerId);
+  if (idx > -1) {
+    selectedPlayerIds.splice(idx, 1);
+  } else {
+    selectedPlayerIds.push(playerId);
+  }
+  renderSelectedList();
   refreshParticipantOptions();
 }
 
-function refreshParticipantOptions() {
-  const selects = participantsEl.querySelectorAll(".p-select");
-  selects.forEach((sel) => {
-    const prev = sel.value;
-    sel.innerHTML = '<option value="">— choisir —</option>';
-    for (const p of players) {
-      const opt = document.createElement("option");
-      opt.value = p.id;
-      opt.textContent = p.name;
-      sel.appendChild(opt);
+function renderSelectedList() {
+  selectedListEl.innerHTML = "";
+  selectedPlayerIds.forEach((id, i) => {
+    const player = players.find(p => p.id === id);
+    const row = document.createElement("div");
+    row.className = "selected-participant-row" + (i === 0 ? " winner" : "");
+    row.dataset.playerId = id;
+
+    if (i === 0) {
+      row.innerHTML = `
+        <div class="rank">🏆</div>
+        <div class="p-name">${escapeHtml(player.name)}</div>
+        <select class="p-finish" title="Finition">
+          <option value="SIMPLE">SIMPLE</option>
+          <option value="DOUBLE">✖️2</option>
+          <option value="TRIPLE">✖️3</option>
+        </select>
+      `;
+    } else {
+      row.innerHTML = `
+        <div class="rank">💀</div>
+        <div class="p-name">${escapeHtml(player.name)}</div>
+        <input type="tel" class="p-score" placeholder="Score" min="1" max="301" pattern="[0-9]*" required />
+      `;
+      // Focus score if it's the last added
+      if (i === selectedPlayerIds.length - 1) {
+        setTimeout(() => row.querySelector("input").focus(), 0);
+      }
     }
-    if (prev) sel.value = prev;
+    selectedListEl.appendChild(row);
   });
-
-  // Warn if same player selected twice
-  selects.forEach((sel) => {
-    sel.addEventListener("change", checkDuplicatePlayers, { once: false });
-  });
+  submitQuickBtn.disabled = selectedPlayerIds.length < 2;
 }
-
-function checkDuplicatePlayers() {
-  const selects = [...participantsEl.querySelectorAll(".p-select")];
-  const values = selects.map((s) => s.value).filter(Boolean);
-  const hasDup = values.length !== new Set(values).size;
-  const status = document.getElementById("m-status");
-  if (hasDup) {
-    setStatus(status, "⚠️ Un joueur est sélectionné plusieurs fois", false);
-  } else if (status.textContent.startsWith("⚠️")) {
-    status.textContent = "";
-    status.className = "status";
-  }
-}
-
-function refreshRanks() {
-  [...participantsEl.querySelectorAll(".participant-row")].forEach((row, i) => {
-    const rankEl = row.querySelector(".rank");
-    row.classList.toggle("winner-row", i === 0);
-    rankEl.textContent = i === 0 ? "🏆" : "💀";
-  });
-}
-
-document.getElementById("m-add").addEventListener("click", addParticipantRow);
 
 document.getElementById("match-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const status = document.getElementById("m-status");
-  const btn = e.submitter || e.target.querySelector('[type="submit"]');
+  const btn = submitQuickBtn;
   const matchId = document.getElementById("m-id").value;
-  // seasonId is no longer directly selected by user, it's auto-detected
   const playedAtRaw = document.getElementById("m-playedAt").value;
-  const rows = [...participantsEl.querySelectorAll(".participant-row")];
+  const rows = [...selectedListEl.querySelectorAll(".selected-participant-row")];
 
-  if (rows.length < 2) {
-    return setStatus(status, "Il faut au moins 2 participants (1 gagnant + 1 perdant)", false);
-  }
+  if (rows.length < 2) return;
 
   const winnerRow = rows[0];
-  const winnerId = Number(winnerRow.querySelector(".p-select").value);
+  const winnerId = Number(winnerRow.dataset.playerId);
   const finishType = winnerRow.querySelector(".p-finish").value;
 
   const losers = rows.slice(1).map((row) => ({
-    playerId: Number(row.querySelector(".p-select").value),
+    playerId: Number(row.dataset.playerId),
     scoreLeft: Number(row.querySelector(".p-score").value),
   }));
 
   if (!winnerId || losers.some((l) => !l.playerId || !l.scoreLeft)) {
-    return setStatus(status, "Tous les champs sont requis", false);
+    return setStatus(status, "Tous les scores sont requis", false);
   }
 
-  // Check duplicates
-  const allIds = [winnerId, ...losers.map((l) => l.playerId)];
-  if (allIds.length !== new Set(allIds).size) {
-    return setStatus(status, "Un joueur est sélectionné plusieurs fois", false);
-  }
-
-  const payload = { winner: { playerId: winnerId, finishType }, losers }; // Removed TypeScript type annotation
+  const payload = { winner: { playerId: winnerId, finishType }, losers };
   if (playedAtRaw) payload.playedAt = new Date(playedAtRaw).toISOString();
-  // seasonId is no longer sent from client, it's auto-detected by server
 
   setLoading(btn, true);
   try {
@@ -705,14 +670,11 @@ document.getElementById("match-form").addEventListener("submit", async (e) => {
       result = await api.recordMatch(payload);
     }
     showMatchSummary(result);
-    const prevPlayers = [...participantsEl.querySelectorAll(".p-select")].map((s) => s.value);
-    participantsEl.innerHTML = "";
-    const rowCount = Math.max(2, prevPlayers.length);
-    for (let i = 0; i < rowCount; i++) addParticipantRow();
-    prevPlayers.forEach((id, i) => {
-      const sel = participantsEl.children[i]?.querySelector(".p-select");
-      if (sel && id) sel.value = id;
-    });
+    
+    // Clear selection after success
+    selectedPlayerIds = [];
+    renderSelectedList();
+    refreshParticipantOptions();
     status.textContent = "";
   } catch (err) {
     setStatus(status, err.message, false);
@@ -1029,15 +991,21 @@ function editMatch(m) {
   document.getElementById("m-playedAt").value = formatDateForInput(m.playedAt);
   document.getElementById("match-form-title").textContent = "Modifier le match #" + m.id;
 
-  participantsEl.innerHTML = "";
   const sorted = [...m.participants].sort((a, b) => a.rank - b.rank);
-  sorted.forEach((p, i) => {
-    addParticipantRow();
-    const row = participantsEl.children[i];
-    row.querySelector(".p-select").value = p.playerId;
-    if (p.rank === 1) row.querySelector(".p-finish").value = p.finishType;
-    else row.querySelector(".p-score").value = p.scoreLeft;
-  });
+  selectedPlayerIds = sorted.map(p => p.playerId);
+  
+  renderSelectedList();
+  refreshParticipantOptions();
+  
+  // Fill scores/finish
+  setTimeout(() => {
+    const rows = [...selectedListEl.querySelectorAll(".selected-participant-row")];
+    sorted.forEach((p, i) => {
+      const row = rows[i];
+      if (p.rank === 1) row.querySelector(".p-finish").value = p.finishType;
+      else row.querySelector(".p-score").value = p.scoreLeft;
+    });
+  }, 0);
 
   document.querySelector('button[data-tab="match"]').click();
 }
@@ -1184,7 +1152,7 @@ async function refreshLeaderboard() {
         <td><strong>${r.totalXP} XP</strong></td>
         <td>
           <div class="xp-progress-bg">
-            <div class="xp-progress-bar" data-pct="${progressPercent}" style="width:0%"></div>
+            <div class="xp-progress-bar level-${levelSlug}" data-pct="${progressPercent}" style="width:0%"></div>
           </div>
           <div class="xp-next-label">${xpLabel}</div>
         </td>
@@ -1267,9 +1235,8 @@ function onTabShow(tab) {
   
   if (tab === "matches") {
     refreshMatchesList();
-  } else if (tab === "match" && participantsEl.children.length === 0) {
-    addParticipantRow();
-    addParticipantRow();
+  } else if (tab === "match") {
+    refreshParticipantOptions();
   } else if (tab === "guilds") {
     refreshGuilds();
   }
@@ -1605,8 +1572,6 @@ async function ensureAdminPassword() {
   updateLockBtn();
   await refreshPlayers();
   await refreshSeasons();
-  addParticipantRow();
-  addParticipantRow();
   await refreshLeaderboard();
   renderLevelsLegend();
 })();
