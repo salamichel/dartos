@@ -721,24 +721,61 @@ function extractEmojis(str) {
 
 function generateAllEmojis() {
   const emojiRanges = [
-    [0x1F600, 0x1F64F], [0x1F900, 0x1F9FF], [0x1FA70, 0x1FAFF], 
-    [0x1F300, 0x1F5FF], [0x1F680, 0x1F6FF], [0x2600, 0x26FF],   
-    [0x2700, 0x27BF],   [0x2B00, 0x2BFF],   [0x1F1E6, 0x1F1FF], 
-    [0x1F0A0, 0x1F0FF], [0x1F000, 0x1F02B], [0x1F030, 0x1F093]  
+    // --- 1. Smileys et Émotions ---
+    [0x1F600, 0x1F64F], // Visages classiques 😀 😂 🥰 😭 😡
+    [0x1F900, 0x1F9FF], // Nouveaux smileys, monstres, gestes 🤔 🤪 🦖 🤖 🤷
+    
+    // --- 2. Extensions récentes ---
+    [0x1FA70, 0x1FAFF], // Symboles étendus-A (nouveautés) 🫀 🥷 🪰 🧋 🥸
+
+    // --- 3. Nature, Animaux, Nourriture et Objets ---
+    [0x1F300, 0x1F5FF], // Plantes, animaux, nourriture 🌲 🐈 🍎 🍔 📱
+
+    // --- 4. Transports et Lieux ---
+    [0x1F680, 0x1F6FF], // Véhicules, bâtiments, cartes 🚀 🚗 🚦 🏨 🛳️
+
+    // --- 5. Symboles classiques et Météo ---
+    [0x2600, 0x26FF],   // Symboles divers ☀️ ☂️ ☢️ ☕ ☮️
+    [0x2700, 0x27BF],   // Dingbats (ornements) ✂️ ✈️ ✔️ 🌸 ✨
+    [0x2B00, 0x2BFF],   // Flèches et symboles géométriques ⬅️ ⬛ ⭐ ⭕
+
+    // --- 6. Drapeaux (Indicateurs régionaux) ---
+    [0x1F1E6, 0x1F1FF], // Lettres A-Z qui se combinent pour les drapeaux 🇦 🇧 🇨 (ex: 🇫🇷)
+
+    // --- 7. Jeux de société ---
+    [0x1F0A0, 0x1F0FF], // Cartes à jouer ♠️ ♥️ ♦️ ♣️ 🃏
+    [0x1F000, 0x1F02B], // Tuiles de Mahjong 🀄 🀅 🀆
+    [0x1F030, 0x1F093]  // Dominos 🁣 🁫 🂓
   ];
 
   const emojis = [];
+
+  // 1. Filtre pour garder les vrais emojis colorés
   const isRealEmoji = /\p{Emoji_Presentation}/u;
-  const uselessEmojiRegex = /[\u{1F550}-\u{1F567}\u{1F311}-\u{1F318}\u{1F191}-\u{1F251}\u{1F5B0}-\u{1F5FE}\u{2B00}-\u{2BFF}\u{26E0}-\u{26E7}\u{25AA}\u{25AB}\u{25FD}\u{25FE}\u{2B1B}\u{2B1C}\u{3030}\u{3297}\u{3299}\u{23CF}\u{23E9}-\u{23EC}\u{23F8}-\u{23FA}\u{25C0}\u{25B6}]/gu;
+  
+  // 2. Filtre anti-flèches directionnelles
+  const isArrow = /[⬅⬆⬇➡↗↘↙↖↕↔↩↪⤴⤵◀▶🔼🔽⏪⏩⏫⏬]/;
+
+  // 3. Filtre anti-bruit visuel (MIS À JOUR)
+  // \u{1F550}-\u{1F567} : Horloges
+  // \u{1F311}-\u{1F318} : Phases lunaires
+  // \u{1F191}-\u{1F251} : Boutons texte (ex: CLR, COOL)
+  // \u{1F5B0}-\u{1F5FE} : Vieux ordis, dossiers et fenêtres
+  // \u{2B00}-\u{2BFF}   : Symboles géométriques complets (Supprime ⬨)
+  // \u{26E0}-\u{26E7}   : Symboles cartographiques obscurs
+  // \u{1F900}-\u{1F90B} : NOUVEAU - Demi-cercles et croix typographiques (Supprime 🤅)
+  const isUseless = /[\u{1F550}-\u{1F567}\u{1F311}-\u{1F318}\u{1F191}-\u{1F251}\u{1F5B0}-\u{1F5FE}\u{2B00}-\u{2BFF}\u{26E0}-\u{26E7}\u{1F900}-\u{1F90B}]/u;
 
   for (const range of emojiRanges) {
     for (let code = range[0]; code <= range[1]; code++) {
       const caractere = String.fromCodePoint(code);
-      if (isRealEmoji.test(caractere) && !uselessEmojiRegex.test(caractere)) {
+      
+      if (isRealEmoji.test(caractere) && !isArrow.test(caractere) && !isUseless.test(caractere)) {
         emojis.push(caractere);
       }
     }
   }
+ 
   return emojis;
 }
 
