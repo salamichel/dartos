@@ -817,11 +817,13 @@ function showMatchSummary(match) {
 
   const lotterySection = document.getElementById("lottery-section");
   const spinBtn = document.getElementById("spin-button");
+  const celebrateBtn = document.getElementById("modal-close");
   const resultText = document.getElementById("lottery-result");
 
   if (xpBonusLottery > 0) {
     lotterySection.classList.remove("hidden");
     spinBtn.disabled = false;
+    celebrateBtn.disabled = true;
     resultText.innerHTML = `Misez sur vos émojis ! Seuls les <strong>5 premiers émojis</strong> de votre pseudo sont éligibles. Chaque émoji tiré identique rapporte <strong>${xpBonusLottery} XP</strong> !`;
 
     // Extract max 5 emojis from each participant
@@ -866,6 +868,7 @@ function showMatchSummary(match) {
 
     newSpinBtn.addEventListener("click", async () => {
       newSpinBtn.disabled = true;
+      celebrateBtn.disabled = false;
       resultText.textContent = "🎰 Tirage en cours... Que la chance soit avec vous !";
 
       const drawnEmojis = [];
