@@ -34,15 +34,18 @@ export default function GuildsTab({
 
   // Compute stats dynamically inside guilds
   useEffect(() => {
-    // 1. Gather career level, wins and details for every player
+    // 1. Gather active season level, wins and details for every player
     const playerStatsMap = new Map<number, { xp: number; wins: number; badgesCount: number; uniqueBadges: string[] }>();
     
-    // Default stats representing career
+    // Default stats representing current season
     players.forEach(p => {
       playerStatsMap.set(p.id, { xp: 0, wins: 0, badgesCount: 0, uniqueBadges: [] });
     });
 
     matches.forEach(m => {
+      // Filter matches by current active season if activeSeasonId is provided
+      if (activeSeasonId !== "" && m.seasonId !== activeSeasonId) return;
+
       m.participants.forEach(part => {
         const stats = playerStatsMap.get(part.playerId) || { xp: 0, wins: 0, badgesCount: 0, uniqueBadges: [] };
         const uniqueBonusSet = new Set([...stats.uniqueBadges, ...part.medals]);

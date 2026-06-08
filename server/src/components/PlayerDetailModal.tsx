@@ -55,8 +55,17 @@ export default function PlayerDetailModal({
 
   const totalMatchesCount = playerMatches.length;
 
-  // Let's compute career XP, wins, medals
+  // Find current active season
+  const activeSeason = seasons.find(s => {
+    const now = new Date();
+    const start = new Date(s.startedAt);
+    const end = s.endedAt ? new Date(s.endedAt) : null;
+    return start <= now && (!end || end >= now);
+  }) || (seasons.length > 0 ? seasons[0] : null);
+
+  // Let's compute career XP, active season XP, wins, medals
   let totalXP = 0;
+  let seasonXP = 0;
   let winsCount = 0;
   let maxSingleMatchXP = 0;
   const medalsCountMap: Record<string, number> = {};
@@ -71,6 +80,9 @@ export default function PlayerDetailModal({
     const selfPart = m.participants.find(p => p.playerId === player.id);
     if (selfPart) {
       totalXP += selfPart.xpEarned;
+      if (activeSeason && m.seasonId === activeSeason.id) {
+        seasonXP += selfPart.xpEarned;
+      }
       if (selfPart.rank === 1) {
         winsCount++;
         const finish = selfPart.finishType || "SIMPLE";
@@ -165,15 +177,15 @@ export default function PlayerDetailModal({
   return (
     <div
       id="player-detail-overlay-bg"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto"
     >
       <motion.div
         id="player-detail-modal-container"
-        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        initial={{ opacity: 0, scale: 0.95, y: -15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        exit={{ opacity: 0, scale: 0.95, y: -15 }}
         transition={{ duration: 0.25 }}
-        className="w-full max-w-2xl bg-slate-900 border-2 border-slate-800 rounded-none shadow-2xl relative flex flex-col my-8 overflow-hidden"
+        className="w-full max-w-2xl bg-slate-900 border-2 border-slate-800 rounded-none shadow-2xl relative flex flex-col my-2 sm:my-8 overflow-hidden"
       >
         {/* Glow Header Accent Line */}
         <div className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-cosmic-accent via-[#FF6E6E] to-[#8E1E1E]" />
@@ -217,8 +229,11 @@ export default function PlayerDetailModal({
               <span id="player-detail-tier-badge" className="inline-block px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider border text-cosmic-accent bg-cosmic-accent/10 border-cosmic-accent/20 rounded-none">
                 {levelInfo.title}
               </span>
+              <span id="player-detail-season-xp-indicator" className="text-xs text-slate-200 font-mono font-bold bg-slate-950 px-2 py-0.5 border border-[#2A2A2E]">
+                {seasonXP.toLocaleString()} XP ({activeSeason ? activeSeason.name : "Saison en cours"})
+              </span>
               <span id="player-detail-xp-indicator" className="text-xs text-slate-400 font-mono font-medium">
-                {totalXP.toLocaleString()} XP Totale
+                {totalXP.toLocaleString()} XP Totale (Carrière)
               </span>
             </div>
           </div>

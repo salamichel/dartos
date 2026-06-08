@@ -67,16 +67,28 @@ export default function PlayersTab({
     }
   };
 
-  // Group player statistics (career XP and cumulative badges)
+  // Find current active season
+  const activeSeason = seasons.find(s => {
+    const now = new Date();
+    const start = new Date(s.startedAt);
+    const end = s.endedAt ? new Date(s.endedAt) : null;
+    return start <= now && (!end || end >= now);
+  }) || (seasons.length > 0 ? seasons[0] : null);
+
+  // Group player statistics (active season XP and cumulative badges)
   const playersWithDetails = players.map(p => {
-    // Collect all XP and medals won by this player
-    let totalXP = 0;
+    // Collect XP (for active season only) and medals won by this player (career or season? task says "il ne faut pas afficher les xptotal mais ceux de la saison en cours" - we will compute seasonXP)
+    let totalXP = 0; // career XP for level calculation
+    let seasonXP = 0; // XP of current active season
     const badgesGroup: Record<string, number> = {};
 
     matches.forEach(m => {
       const part = m.participants.find(pt => pt.playerId === p.id);
       if (part) {
         totalXP += part.xpEarned;
+        if (activeSeason && m.seasonId === activeSeason.id) {
+          seasonXP += part.xpEarned;
+        }
         part.medals.forEach(medal => {
           badgesGroup[medal] = (badgesGroup[medal] || 0) + 1;
         });
@@ -84,11 +96,13 @@ export default function PlayersTab({
     });
 
     totalXP = Math.max(0, totalXP);
+    seasonXP = Math.max(0, seasonXP);
     const levelInfo = getLevel(totalXP);
 
     return {
       ...p,
       totalXP,
+      seasonXP,
       levelTitle: levelInfo.title,
       medals: Object.entries(badgesGroup).map(([name, count]) => ({ name, count }))
     };
@@ -169,7 +183,9 @@ export default function PlayersTab({
                       </div>
                       
                       <div className="text-xs text-slate-400 flex items-center gap-4 flex-wrap">
-                        <span className="font-mono text-slate-300">{p.totalXP.toLocaleString()} XP de Carrière</span>
+                        <span className="font-mono text-slate-300">
+                          {p.seasonXP.toLocaleString()} XP ({activeSeason ? activeSeason.name : "Saison en cours"})
+                        </span>
                         
                         {/* Grouped Medals Display */}
                         {p.medals.length > 0 && (
