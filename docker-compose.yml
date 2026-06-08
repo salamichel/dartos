@@ -27,7 +27,7 @@ services:
       PORT: ${PORT:-3000}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     ports:
-      - "${APP_PORT:-8030}:3000"
+      - "${APP_PORT_DEV:-8030}:3000"
       - "5555:5555"
 
   api-2:
