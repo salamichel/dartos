@@ -1,0 +1,6 @@
+{
+  "name": "Dartos",
+  "description": "Ligue de fléchettes 301 Sudden Death avec système RPG d'XP, médailles, saisons configurables et guildes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
