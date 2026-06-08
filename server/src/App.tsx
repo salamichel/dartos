@@ -57,17 +57,36 @@ export default function App() {
       syncDatabase();
     });
 
-    // Check if passcode already established in LocalStorage
+    // Check if passcode already established in LocalStorage and is valid
     const savedCode = localStorage.getItem("dartos_admin_pass") || "";
-    if (savedCode) {
+    if (savedCode && savedCode === dbStore.getAdminPassword()) {
       setAdminPassword(savedCode);
       setIsUnlocked(true);
+    } else if (savedCode) {
+      localStorage.removeItem("dartos_admin_pass");
     }
 
     return () => {
       unsubscribe();
     };
-  }, [lbSeasonId]);
+  }, []); // Run ONLY once on mount to establish a stable stream!
+
+  // Auto-select active season when seasons load
+  useEffect(() => {
+    if (lbSeasonId === "" && seasons.length > 0) {
+      const now = new Date();
+      const current = seasons.find(s => {
+        const start = new Date(s.startedAt);
+        const end = s.endedAt ? new Date(s.endedAt) : null;
+        return start <= now && (!end || end >= now);
+      });
+      if (current) {
+        setLbSeasonId(current.id);
+      } else if (seasons.length > 0) {
+        setLbSeasonId(seasons[0].id);
+      }
+    }
+  }, [seasons, lbSeasonId]);
 
   const syncDatabase = () => {
     setPlayers([...dbStore.getPlayers()]);
@@ -75,21 +94,6 @@ export default function App() {
     setSeasons(allSeasons);
     setMatches([...dbStore.getMatches()]);
     setGuilds([...dbStore.getGuilds()]);
-
-    // Pre-select current season if not yet selected
-    if (lbSeasonId === "" && allSeasons.length > 0) {
-      const now = new Date();
-      const current = allSeasons.find(s => {
-        const start = new Date(s.startedAt);
-        const end = s.endedAt ? new Date(s.endedAt) : null;
-        return start <= now && (!end || end >= now);
-      });
-      if (current) {
-        setLbSeasonId(current.id);
-      } else if (allSeasons.length > 0) {
-        setLbSeasonId(allSeasons[0].id);
-      }
-    }
   };
 
   // Toast loop helper
@@ -117,25 +121,34 @@ export default function App() {
   };
 
   // Master Admin locks handler
-  const handleLockClick = () => {
+  const handleLockClick = (): boolean => {
     if (isUnlocked) {
       // Clear password locks
       localStorage.removeItem("dartos_admin_pass");
       setAdminPassword("");
       setIsUnlocked(false);
       showToast("Verrouillé ! Privilèges d'administration désactivés.", "info");
+      return false;
     } else {
       const psw = prompt("Saisissez ou créez le mot de passe d'administration :");
-      if (psw === null) return;
+      if (psw === null) return false;
       const clean = psw.trim();
       if (!clean) {
         showToast("Le mot de passe ne peut pas être vide", "err");
-        return;
+        return false;
       }
+      
+      // Valider par rapport au mot de passe de la DB
+      if (clean !== dbStore.getAdminPassword()) {
+        showToast("Mot de passe incorrect !", "err");
+        return false;
+      }
+
       localStorage.setItem("dartos_admin_pass", clean);
       setAdminPassword(clean);
       setIsUnlocked(true);
       showToast("Déverrouillé ! Privilèges d'administration actifs ✓", "ok");
+      return true;
     }
   };
 
@@ -143,8 +156,7 @@ export default function App() {
     if (isUnlocked) return true;
     const ok = await showConfirm("Mode Administrateur requis. Déverrouiller maintenant ?");
     if (ok) {
-      handleLockClick();
-      return true;
+      return handleLockClick();
     }
     return false;
   };

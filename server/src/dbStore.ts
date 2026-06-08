@@ -228,6 +228,7 @@ class DartosDB {
   private state: DatabaseState;
   private listeners: (() => void)[] = [];
   private isSeeding = false;
+  private notifyTimeout: any = null;
 
   constructor() {
     // 1. Initialise with localStorage cached values first to build fast-boot capability
@@ -273,6 +274,11 @@ class DartosDB {
       snap.forEach(d => {
         players.push(d.data() as Player);
       });
+      // If Firestore is empty but we are seeding or we have our initial seeded memory state,
+      // let's keep the memory state rather than wiping it.
+      if (players.length === 0 && (this.isSeeding || !localStorage.getItem(STORAGE_KEY))) {
+        return;
+      }
       this.state.players = players.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
     }, (error) => {
@@ -289,6 +295,9 @@ class DartosDB {
         this.seedDatabaseIfEmpty();
         return;
       }
+      if (seasons.length === 0 && this.isSeeding) {
+        return;
+      }
       this.state.seasons = seasons.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
     }, (error) => {
@@ -301,6 +310,9 @@ class DartosDB {
       snap.forEach(d => {
         matches.push(d.data() as Match);
       });
+      if (matches.length === 0 && (this.isSeeding || !localStorage.getItem(STORAGE_KEY))) {
+        return;
+      }
       this.state.matches = matches.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
     }, (error) => {
@@ -313,6 +325,9 @@ class DartosDB {
       snap.forEach(d => {
         guilds.push(d.data() as Guild);
       });
+      if (guilds.length === 0 && (this.isSeeding || !localStorage.getItem(STORAGE_KEY))) {
+        return;
+      }
       this.state.guilds = guilds.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
     }, (error) => {
@@ -375,7 +390,13 @@ class DartosDB {
   }
 
   private notify() {
-    this.listeners.forEach(l => l());
+    if (this.notifyTimeout) {
+      clearTimeout(this.notifyTimeout);
+    }
+    this.notifyTimeout = setTimeout(() => {
+      this.listeners.forEach(l => l());
+      this.notifyTimeout = null;
+    }, 50);
   }
 
   // --- Admin ---

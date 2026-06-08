@@ -53,7 +53,7 @@ export default function MatchEntryTab({
       setPlayedAt("");
       setSelectedIds([]);
       setScoresLeft({});
-      setWinnerFinish("DOUBLE");
+      setWinnerFinish("SIMPLE");
     }
   }, [editingMatch]);
 
@@ -279,7 +279,9 @@ export default function MatchEntryTab({
                     ) : isSelected ? (
                       <span className="text-cosmic-accent font-black font-mono">{selectedIndex + 1}</span>
                     ) : (
-                      <User className="w-5 h-5 text-slate-700" />
+                      <div className="w-10 h-10 rounded-none bg-slate-950 border border-[#2A2A2E] group-hover:border-cosmic-accent group-hover:text-cosmic-accent flex items-center justify-center text-slate-400 font-bold select-none shrink-0 font-display transition-all">
+                        {p.name.charAt(0).toUpperCase()}
+                      </div>
                     )}
                   </div>
                   <span className="text-xs font-semibold truncate w-full select-text">{p.name}</span>
