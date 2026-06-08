@@ -62,23 +62,23 @@ export default function SplashModal({ forceOpen = false, onClose }: SplashModalP
           <div className="grid grid-cols-2 gap-2 text-xs max-w-sm mx-auto">
             <div className="bg-[#111114] p-2 border border-[#2A2A2E] flex justify-between items-center rounded-none">
               <span className="text-slate-400 font-medium">Pousse-Caillou</span>
-              <span className="font-mono text-cosmic-accent font-black">0+ XP</span>
+              <span className="font-mono text-emerald-400 font-black text-sm">0+ XP</span>
             </div>
             <div className="bg-[#111114] p-2 border border-[#2A2A2E] flex justify-between items-center rounded-none">
               <span className="text-slate-400 font-medium">Lanceur de Dimanche</span>
-              <span className="font-mono text-cosmic-accent font-black">500+ XP</span>
+              <span className="font-mono text-emerald-400 font-black text-sm">500+ XP</span>
             </div>
             <div className="bg-[#111114] p-2 border border-[#2A2A2E] flex justify-between items-center grid-col-span-2 col-span-2 rounded-none">
               <span className="text-slate-400 font-medium font-bold">Sniper de Comptoir</span>
-              <span className="font-mono text-cosmic-accent font-black">2 000+ XP</span>
+              <span className="font-mono text-emerald-400 font-black text-sm">2 000+ XP</span>
             </div>
             <div className="bg-[#111114] p-2 border border-[#2A2A2E] flex justify-between items-center rounded-none">
               <span className="text-slate-400 font-medium">Maître du 301</span>
-              <span className="font-mono text-cosmic-accent font-black">5 000+ XP</span>
+              <span className="font-mono text-emerald-400 font-black text-sm">5 000+ XP</span>
             </div>
             <div className="bg-amber-500/10 p-2 rounded-none border border-amber-500/20 flex justify-between items-center text-amber-300 font-semibold col-span-2">
               <span>👑 Phil Taylor</span>
-              <span className="font-mono">10k+ XP</span>
+              <span className="font-mono text-emerald-400 font-black text-sm">10k+ XP</span>
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ export default function SplashModal({ forceOpen = false, onClose }: SplashModalP
             </div>
             <div className="flex justify-between items-center border-b border-slate-800/40 pb-1.5">
               <span className="text-cosmic-accent font-semibold font-mono tracking-wider">💎 Récompense :</span>
-              <span className="text-white"><strong>+20 XP</strong> par émoji identique tiré !</span>
+              <span className="text-white"><strong className="text-emerald-400 font-black text-sm">+20 XP</strong> par émoji identique tiré !</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-purple-400 font-semibold font-mono tracking-wider">🏅 Badge Super Jackpot :</span>

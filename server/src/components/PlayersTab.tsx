@@ -182,9 +182,12 @@ export default function PlayersTab({
                         </span>
                       </div>
                       
-                      <div className="text-xs text-slate-400 flex items-center gap-4 flex-wrap">
-                        <span className="font-mono text-slate-300">
-                          {p.seasonXP.toLocaleString()} XP ({activeSeason ? activeSeason.name : "Saison en cours"})
+                      <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-sm font-bold text-emerald-400">
+                          {p.seasonXP.toLocaleString()} XP
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          ({activeSeason ? activeSeason.name : "Saison en cours"})
                         </span>
                         
                         {/* Grouped Medals Display */}

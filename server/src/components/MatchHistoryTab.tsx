@@ -141,7 +141,7 @@ export default function MatchHistoryTab({
 
                           {/* Right segment (XP and badges) */}
                           <div className="flex items-center gap-2 flex-wrap self-end sm:self-center font-sans">
-                            <span className="px-2 py-0.5 bg-cosmic-accent/10 text-cosmic-accent font-extrabold font-mono text-[10px] rounded-none border border-cosmic-accent/15">
+                            <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 font-black font-mono text-xs rounded-none border border-emerald-505/20">
                               +{part.xpEarned} XP
                             </span>
                             {part.medals && part.medals.length > 0 && (

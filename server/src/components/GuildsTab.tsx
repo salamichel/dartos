@@ -298,7 +298,7 @@ export default function GuildsTab({
                         </span>
                         <strong className="text-white font-sans font-bold select-text">{gl.name}</strong>
                       </td>
-                      <td className="py-3 px-3 text-right font-black text-cosmic-accent">{gl.collectiveXP} XP</td>
+                      <td className="py-3 px-3 text-right font-black text-emerald-400 text-sm">{gl.collectiveXP} XP</td>
                       <td className="py-3 px-3 text-slate-400 font-sans leading-relaxed text-[11px] select-text">
                         {gl.members.map(m => `${m.name} (${m.totalXP} XP)`).join(", ") || "Aucun participant actif"}
                       </td>
@@ -434,7 +434,7 @@ export default function GuildsTab({
                     <div>
                       <h4 className="font-bold text-white text-base select-text">{gl.name}</h4>
                       <span className="block text-[10px] text-slate-400 font-sans">
-                        {gl.members.length} compagnon(s) · {gl.collectiveXP.toLocaleString()} XP d'Alliance
+                        {gl.members.length} compagnon(s) · <span className="text-emerald-400 font-extrabold text-[11px]">{gl.collectiveXP.toLocaleString()} XP d'Alliance</span>
                       </span>
                     </div>
                   </div>
@@ -500,8 +500,8 @@ export default function GuildsTab({
                                 <span className="text-sm" title={m.guildRank}>{m.guildRankIcon}</span>
                                 <div>
                                   <strong className="text-white select-text font-serif">{m.name}</strong>
-                                  <span className="block text-[9px] text-[#88888e] leading-none">
-                                    {m.guildRank} · {m.totalXP.toLocaleString()} XP
+                                  <span className="block text-[10px] text-[#88888e] leading-none mt-0.5">
+                                    {m.guildRank} · <span className="text-emerald-400 font-bold">{m.totalXP.toLocaleString()} XP</span>
                                   </span>
                                 </div>
                               </div>

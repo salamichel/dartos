@@ -240,7 +240,7 @@ export default function App() {
             </button>
             <div className="flex items-baseline gap-2">
               <h1 className="text-3xl font-black font-display tracking-tighter text-white select-none uppercase">
-                DARTOS<span className="text-cosmic-accent font-extrabold text-glow">.</span>
+                D<span className="text-[#3dc7ff]">A</span>R<span className="text-[#3dc7ff]">TOS</span><span className="text-cosmic-accent font-extrabold text-glow">.</span>
               </h1>
               <span className="text-[10px] uppercase tracking-widest text-[#66666E] border border-slate-800 px-2 py-0.5 ml-1 bg-slate-950 rounded">v2.02</span>
             </div>
@@ -443,7 +443,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="font-mono font-black text-right text-sky-400 text-sm py-0.5 pr-2 select-text">
+                      <div className="font-mono font-black text-right text-emerald-400 text-base py-0.5 pr-2 select-text">
                         +{part.xpEarned} XP
                       </div>
                     </div>

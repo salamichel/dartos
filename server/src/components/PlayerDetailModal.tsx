@@ -229,10 +229,10 @@ export default function PlayerDetailModal({
               <span id="player-detail-tier-badge" className="inline-block px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider border text-cosmic-accent bg-cosmic-accent/10 border-cosmic-accent/20 rounded-none">
                 {levelInfo.title}
               </span>
-              <span id="player-detail-season-xp-indicator" className="text-xs text-slate-200 font-mono font-bold bg-slate-950 px-2 py-0.5 border border-[#2A2A2E]">
+              <span id="player-detail-season-xp-indicator" className="text-sm text-emerald-400 font-mono font-black bg-slate-950 px-2.5 py-1 border border-[#2A2A2E] shadow-[0_0_10px_rgba(16,185,129,0.1)]">
                 {seasonXP.toLocaleString()} XP ({activeSeason ? activeSeason.name : "Saison en cours"})
               </span>
-              <span id="player-detail-xp-indicator" className="text-xs text-slate-400 font-mono font-medium">
+              <span id="player-detail-xp-indicator" className="text-sm text-emerald-500/80 font-mono font-semibold">
                 {totalXP.toLocaleString()} XP Totale (Carrière)
               </span>
             </div>
@@ -548,7 +548,7 @@ export default function PlayerDetailModal({
                         </div>
                       </div>
 
-                      <div className="font-mono font-black text-right text-sky-400">
+                      <div className="font-mono font-black text-right text-emerald-400 text-sm">
                         +{m.xpEarned} XP
                       </div>
                     </div>

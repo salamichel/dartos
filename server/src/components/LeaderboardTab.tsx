@@ -294,7 +294,7 @@ export default function LeaderboardTab({
                 <div className="text-xs font-bold text-slate-300 group-hover:text-cosmic-accent text-center truncate max-w-[80px] md:max-w-[110px] select-text transition-colors">
                   {podiumSpots[0].name}
                 </div>
-                <div className="text-[10px] font-mono text-slate-400 font-semibold mb-2">
+                <div className="text-xs font-mono text-emerald-400 font-bold mb-2">
                   {podiumSpots[0].totalXP} XP
                 </div>
                 <div className="w-full bg-[#111114] border border-[#2A2A2E] group-hover:border-slate-700 rounded-none h-[70px] flex items-center justify-center shadow-lg transition-colors">
@@ -321,7 +321,7 @@ export default function LeaderboardTab({
                 <div className="text-sm font-black text-amber-300 group-hover:text-cosmic-accent text-center truncate max-w-[90px] md:max-w-[120px] select-text transition-colors">
                   {podiumSpots[1].name}
                 </div>
-                <div className="text-xs font-mono text-amber-200/90 font-bold mb-2">
+                <div className="text-sm font-mono text-emerald-400 font-extrabold mb-2">
                   {podiumSpots[1].totalXP} XP
                 </div>
                 <div className="w-full bg-gradient-to-b from-cosmic-accent/15 to-[#111114] border-2 border-cosmic-accent/40 group-hover:border-cosmic-accent rounded-none h-[100px] flex items-center justify-center shadow-2xl relative transition-colors">
@@ -347,7 +347,7 @@ export default function LeaderboardTab({
                 <div className="text-xs font-bold text-slate-400 group-hover:text-cosmic-accent text-center truncate max-w-[80px] md:max-w-[110px] select-text transition-colors">
                   {podiumSpots[2].name}
                 </div>
-                <div className="text-[10px] font-mono text-slate-400 mb-2">
+                <div className="text-xs font-mono text-emerald-400 font-bold mb-2">
                   {podiumSpots[2].totalXP} XP
                 </div>
                 <div className="w-full bg-[#111114] border border-[#2A2A2E]/50 group-hover:border-slate-700 rounded-none h-[55px] flex items-center justify-center shadow-md transition-colors">
@@ -505,7 +505,7 @@ export default function LeaderboardTab({
                           )}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-right font-black text-cosmic-accent">
+                      <td className="py-3.5 px-4 font-mono text-right font-black text-emerald-400 text-sm">
                         {row.totalXP.toLocaleString()} XP
                       </td>
                       <td className="py-3.5 px-4">
