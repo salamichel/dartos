@@ -228,6 +228,7 @@ class DartosDB {
   private state: DatabaseState;
   private listeners: (() => void)[] = [];
   private isSeeding = false;
+  private hasLoadedFromFirestoreOnce = false;
   private notifyTimeout: any = null;
 
   constructor() {
@@ -247,7 +248,8 @@ class DartosDB {
       }
     } else {
       this.state = { ...INITIAL_STATE };
-      this.saveLocalAndNotify();
+      // Save initially to local storage to have a fallback cache immediately
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
     }
 
     // 2. Hydrate realtime updates from Firestore
@@ -274,10 +276,12 @@ class DartosDB {
       snap.forEach(d => {
         players.push(d.data() as Player);
       });
-      // If Firestore is empty but we are seeding or we have our initial seeded memory state,
-      // let's keep the memory state rather than wiping it.
-      if (players.length === 0 && (this.isSeeding || !localStorage.getItem(STORAGE_KEY))) {
+      // Do not wipe our initial/cached players if Firestore returns empty on startup or while seeding
+      if (players.length === 0 && (this.isSeeding || !this.hasLoadedFromFirestoreOnce)) {
         return;
+      }
+      if (players.length > 0) {
+        this.hasLoadedFromFirestoreOnce = true;
       }
       this.state.players = players.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
@@ -291,13 +295,13 @@ class DartosDB {
       snap.forEach(d => {
         seasons.push(d.data() as Season);
       });
-      if (seasons.length === 0 && !this.isSeeding) {
-        this.seedDatabaseIfEmpty();
+      if (seasons.length === 0) {
+        if (!this.isSeeding && !this.hasLoadedFromFirestoreOnce) {
+          this.seedDatabaseIfEmpty();
+        }
         return;
       }
-      if (seasons.length === 0 && this.isSeeding) {
-        return;
-      }
+      this.hasLoadedFromFirestoreOnce = true;
       this.state.seasons = seasons.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
     }, (error) => {
@@ -310,8 +314,12 @@ class DartosDB {
       snap.forEach(d => {
         matches.push(d.data() as Match);
       });
-      if (matches.length === 0 && (this.isSeeding || !localStorage.getItem(STORAGE_KEY))) {
+      // Do not wipe our initial/cached matches if Firestore returns empty on startup or while seeding
+      if (matches.length === 0 && (this.isSeeding || !this.hasLoadedFromFirestoreOnce)) {
         return;
+      }
+      if (matches.length > 0) {
+        this.hasLoadedFromFirestoreOnce = true;
       }
       this.state.matches = matches.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
@@ -325,8 +333,12 @@ class DartosDB {
       snap.forEach(d => {
         guilds.push(d.data() as Guild);
       });
-      if (guilds.length === 0 && (this.isSeeding || !localStorage.getItem(STORAGE_KEY))) {
+      // Do not wipe our initial/cached guilds if Firestore returns empty on startup or while seeding
+      if (guilds.length === 0 && (this.isSeeding || !this.hasLoadedFromFirestoreOnce)) {
         return;
+      }
+      if (guilds.length > 0) {
+        this.hasLoadedFromFirestoreOnce = true;
       }
       this.state.guilds = guilds.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
@@ -370,6 +382,8 @@ class DartosDB {
       // Seed admin settings
       await setDoc(doc(db, "adminSettings", "config"), { adminPassword: "admin" });
       console.log("Seeding finished successfully!");
+      this.hasLoadedFromFirestoreOnce = true;
+      this.saveLocalAndNotify();
     } catch (e) {
       console.error("Seeding error: ", e);
     } finally {
