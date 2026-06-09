@@ -1,35 +1,36 @@
-# Utilise une image de base Node.js pour le build et l'exécution de l'application
-FROM node:20-alpine AS development
+# ==========================================
+# ÉTAPE 1 : BUILD (Génération du dossier dist)
+# ==========================================
+FROM node:20-alpine AS builder
 
-# Définit le répertoire de travail dans le conteneur
 WORKDIR /app
 
-# Copie les fichiers package.json et package-lock.json
 COPY package*.json ./
-
-# Installe les dépendances
 RUN npm install
 
-# Copie le reste du code source de l'application
 COPY . .
+# Cette commande crée le dossier "dist" contenant la version optimisée
+RUN npm run build 
 
-# Expose le port sur lequel l'application Vite s'exécute
-EXPOSE 3000
 
-# Commande pour démarrer l'application en mode développement
-# Le script 'dev' de package.json utilise le port 3000 et l'hôte 0.0.0.0
-CMD ["npm", "run", "dev"]
-
-# Image finale pour la production (optionnel, mais bonne pratique)
+# ==========================================
+# ÉTAPE 2 : PRODUCTION (Hébergement du site)
+# ==========================================
 FROM node:20-alpine AS production
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install --only=production
+# On installe "serve", un utilitaire pour héberger des fichiers statiques
+RUN npm install -g serve
 
-COPY . .
-RUN npm run build
+# On copie UNIQUEMENT le dossier dist généré à l'étape 1
+# On ne copie ni le code source, ni les lourds node_modules !
+COPY --from=builder /app/dist ./dist
 
+# Expose le port 3000
 EXPOSE 3000
-CMD ["npm", "run", "dev"]
+
+# On lance le serveur sur le dossier "dist"
+# Le flag "-s" (single) est indispensable : il redirige toutes les requêtes vers index.html,
+# ce qui évite les erreurs 404 si tu rafraîchis la page.
+CMD ["serve", "-s", "dist", "-l", "3000"]
