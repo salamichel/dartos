@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Artistic Flair Palette and accents */
+  --color-cosmic-bg: #0A0A0C;
+  --color-cosmic-card: #111114;
+  --color-cosmic-accent: #FF3E3E;
+  --color-artistic-dark: #111114;
+  --color-artistic-border: #2A2A2E;
+  --color-artistic-accent-bg: #16161A;
+}
+
+@layer utilities {
+  /* Dynamic custom scrollbar and text glow animations match the brand red color */
+  .text-glow {
+    text-shadow: 0 0 12px rgba(255, 62, 62, 0.4);
+  }
+  .box-glow {
+    box-shadow: 0 0 25px rgba(255, 62, 62, 0.15);
+  }
+  .artistic-grid {
+    background-image: radial-gradient(#FF3E3E 0.5px, transparent 0.5px);
+    background-size: 20px 20px;
+  }
+}
+
+

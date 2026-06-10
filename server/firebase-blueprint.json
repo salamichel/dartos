@@ -1,0 +1,177 @@
+{
+  "entities": {
+    "Player": {
+      "title": "Player",
+      "description": "Represents a Dartos player",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Unique numeric identifier for the player"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the player"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp indicating when the player was created"
+        }
+      },
+      "required": ["id", "name", "createdAt"]
+    },
+    "Season": {
+      "title": "Season",
+      "description": "Represents a Dartos tournament season with XP configurability",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Unique numeric identifier for the season"
+        },
+        "name": {
+          "type": "string",
+          "description": "Friendly name of the season"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp when the season started"
+        },
+        "endedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp or null if season is ongoing"
+        },
+        "xpPerDefeatedOpponent": { "type": "integer" },
+        "xpBonusSimple": { "type": "integer" },
+        "xpBonusDouble": { "type": "integer" },
+        "xpBonusTriple": { "type": "integer" },
+        "xpVampireMultiplier": { "type": "number" },
+        "xpSurvivorBase": { "type": "integer" },
+        "xpBonusPoulidor": { "type": "integer" },
+        "xpBonusJackpot": { "type": "integer" },
+        "xpBonusEgalite": { "type": "integer" },
+        "xpBonusTueurDeGeants": { "type": "integer" },
+        "xpBonusPhenix": { "type": "integer" },
+        "xpBonusSerialWinner": { "type": "integer" },
+        "xpBonusBenjamin": { "type": "integer" },
+        "xpBonusLottery": { "type": "integer" },
+        "bonusVainqueurParRang": { "type": "boolean" }
+      },
+      "required": [
+        "id",
+        "name",
+        "startedAt",
+        "xpPerDefeatedOpponent",
+        "xpBonusSimple",
+        "xpBonusDouble",
+        "xpBonusTriple",
+        "xpVampireMultiplier",
+        "xpSurvivorBase",
+        "xpBonusPoulidor",
+        "xpBonusJackpot",
+        "xpBonusEgalite",
+        "xpBonusTueurDeGeants",
+        "xpBonusPhenix",
+        "xpBonusSerialWinner",
+        "xpBonusBenjamin",
+        "xpBonusLottery",
+        "bonusVainqueurParRang"
+      ]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "A dart match with list of participants, ranks, and metadata",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "seasonId": {
+          "type": "integer"
+        },
+        "playedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "participants": {
+          "type": "array",
+          "description": "List of player metrics for the match"
+        }
+      },
+      "required": ["id", "seasonId", "playedAt", "participants"]
+    },
+    "Guild": {
+      "title": "Guild",
+      "description": "A guild for grouping players collectively",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "badgeIcon": {
+          "type": "string"
+        },
+        "badgeColor": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+          "format": "date-time"
+        },
+        "memberIds": {
+          "type": "array"
+        }
+      },
+      "required": ["id", "name", "badgeIcon", "badgeColor", "createdAt", "memberIds"]
+    },
+    "AdminSettings": {
+      "title": "AdminSettings",
+      "description": "Configurations like the master admin password",
+      "type": "object",
+      "properties": {
+        "adminPassword": {
+          "type": "string"
+        }
+      },
+      "required": ["adminPassword"]
+    }
+  },
+  "firestore": {
+    "players": {
+      "schema": {
+        "$ref": "#/entities/Player"
+      },
+      "description": "Collection of players participating in Dartos"
+    },
+    "seasons": {
+      "schema": {
+        "$ref": "#/entities/Season"
+      },
+      "description": "Tournament seasons"
+    },
+    "matches": {
+      "schema": {
+        "$ref": "#/entities/Match"
+      },
+      "description": "Completed dart match histories"
+    },
+    "guilds": {
+      "schema": {
+        "$ref": "#/entities/Guild"
+      },
+      "description": "Player guilds/factions"
+    },
+    "adminSettings": {
+      "schema": {
+        "$ref": "#/entities/AdminSettings"
+      },
+      "description": "Administrative configurations"
+    }
+  }
+}

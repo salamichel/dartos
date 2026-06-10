@@ -27,5 +27,22 @@ services:
       PORT: ${PORT:-3000}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     ports:
-      - "${APP_PORT:-8030}:3000"
+      - "${APP_PORT_DEV:-8030}:3000"
       - "5555:5555"
+
+  api-2:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dartos}:${POSTGRES_PASSWORD:-dartos}@db:5432/${POSTGRES_DB:-dartos}?schema=public
+      PORT: ${PORT:-3000}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-MY_GEMINI_API_KEY}
+      APP_URL: ${APP_URL:-http://localhost:8030}
+    ports:
+      - "${APP_PORT:-8040}:3000"      
