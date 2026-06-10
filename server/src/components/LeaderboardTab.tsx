@@ -50,6 +50,7 @@ export default function LeaderboardTab({
   const [timerText, setTimerText] = useState("");
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [visiblePlayers, setVisiblePlayers] = useState<string[]>([]);
+  const [selectedGuildId, setSelectedGuildId] = useState<number | "none" | "">("");
 
   // Pre-seed visible players on chart to be the top 4
   useEffect(() => {
@@ -158,6 +159,17 @@ export default function LeaderboardTab({
       });
     }
 
+    // Filter by guild if selected
+    if (selectedGuildId !== "") {
+      if (selectedGuildId === "none") {
+        result = result.filter(row => !guilds.some(g => g.memberIds.includes(row.id)));
+      } else {
+        const targetGuild = guilds.find(g => g.id === selectedGuildId);
+        const memberIds = targetGuild ? targetGuild.memberIds : [];
+        result = result.filter(row => memberIds.includes(row.id));
+      }
+    }
+
     // Sort descending by totalXP, then by wins, then by name
     result.sort((a, b) => {
       if (b.totalXP !== a.totalXP) return b.totalXP - a.totalXP;
@@ -166,7 +178,7 @@ export default function LeaderboardTab({
     });
 
     setLeaderboard(result);
-  }, [players, matches, guilds, selectedSeasonId]);
+  }, [players, matches, guilds, selectedSeasonId, selectedGuildId]);
 
   const levelColors: Record<string, string> = {
     "Pousse-Caillou": "bg-slate-800/60 text-slate-300 border-slate-700/40",
@@ -240,8 +252,9 @@ export default function LeaderboardTab({
           <p className="text-xs text-slate-400 mt-1">L'historique des meilleures performances, individuel et en alliances.</p>
         </div>
 
-        {/* Season Controller */}
+        {/* Controllers (Season & Guild Alliance) */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Season select */}
           <select
             value={selectedSeasonId}
             onChange={(e) => setSelectedSeasonId(e.target.value === "" ? "" : Number(e.target.value))}
@@ -252,6 +265,25 @@ export default function LeaderboardTab({
               <option key={s.id} value={s.id}>{s.name} {new Date(s.startedAt) <= new Date() && (!s.endedAt || new Date(s.endedAt) >= new Date()) ? "🟢" : "🔒"}</option>
             ))}
           </select>
+
+          {/* Guild select filter */}
+          <select
+            value={selectedGuildId === "none" ? "none" : selectedGuildId}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedGuildId(val === "" ? "" : val === "none" ? "none" : Number(val));
+            }}
+            className="bg-slate-950 border border-[#2A2A2E] text-slate-350 font-bold text-xs px-3 py-2 rounded-none focus:border-cosmic-accent/60 focus:outline-none cursor-pointer"
+          >
+            <option value="">🔰 Toutes les Alliances</option>
+            {guilds.map(g => (
+              <option key={g.id} value={g.id}>
+                {g.badgeIcon} {g.name}
+              </option>
+            ))}
+            <option value="none">👤 Sans Alliance</option>
+          </select>
+
           {selectedSeasonId && (
             <button
               onClick={() => onRecalculateSeason(selectedSeasonId)}
@@ -375,18 +407,19 @@ export default function LeaderboardTab({
 
           {/* Toggle pill buttons */}
           <div id="chart-player-filters" className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-900/50">
-            {players.map((p, index) => {
-              const isVisible = visiblePlayers.includes(p.name);
-              const color = LINE_COLORS[index % LINE_COLORS.length];
+            {leaderboard.map((row) => {
+              const originalIndex = players.findIndex(p => p.id === row.id);
+              const isVisible = visiblePlayers.includes(row.name);
+              const color = LINE_COLORS[originalIndex > -1 ? originalIndex % LINE_COLORS.length : 0];
               return (
                 <button
-                  key={p.id}
-                  id={`chart-filter-p-${p.id}`}
+                  key={row.id}
+                  id={`chart-filter-p-${row.id}`}
                   onClick={() => {
                     if (isVisible) {
-                      setVisiblePlayers(prev => prev.filter(x => x !== p.name));
+                      setVisiblePlayers(prev => prev.filter(x => x !== row.name));
                     } else {
-                      setVisiblePlayers(prev => [...prev, p.name]);
+                      setVisiblePlayers(prev => [...prev, row.name]);
                     }
                   }}
                   className={`px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-1.5 rounded-none ${
@@ -397,7 +430,7 @@ export default function LeaderboardTab({
                   style={isVisible ? { borderColor: color, color } : undefined}
                 >
                   <span className="w-1.5 h-1.5 shrink-0" style={{ backgroundColor: color }} />
-                  {p.name}
+                  {row.name}
                 </button>
               );
             })}
