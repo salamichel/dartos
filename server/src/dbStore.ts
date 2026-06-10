@@ -63,172 +63,15 @@ interface DatabaseState {
 // Initial seeding data
 const INITIAL_STATE: DatabaseState = {
   adminPassword: "admin", // Default admin password
-  players: [
-    { id: 1, name: "👑 Phil Taylor Gones", createdAt: "2026-01-10T12:00:00Z" },
-    { id: 2, name: "🎯 Sniper_De_Comptoir", createdAt: "2026-01-12T14:30:00Z" },
-    { id: 3, name: "🐉 Sacha TueurGeant 🦖", createdAt: "2026-01-15T18:15:00Z" },
-    { id: 4, name: "🥔 Maurice PousseCaillou", createdAt: "2026-02-01T20:00:00Z" },
-    { id: 5, name: "⭐ René le Chanceux 🍀", createdAt: "2026-02-14T11:00:00Z" }
-  ],
-  seasons: [
-    {
-      id: 1,
-      name: "Saison d'Or 2026",
-      startedAt: "2026-01-01T00:00:00Z",
-      endedAt: "2026-12-31T23:59:59Z",
-      xpPerDefeatedOpponent: 50,
-      xpBonusSimple: 0,
-      xpBonusDouble: 50,
-      xpBonusTriple: 100,
-      xpVampireMultiplier: 1.0,
-      xpSurvivorBase: 25,
-      xpBonusPoulidor: 15,
-      xpBonusJackpot: 20,
-      xpBonusEgalite: 10,
-      xpBonusTueurDeGeants: 60,
-      xpBonusPhenix: 30,
-      xpBonusSerialWinner: 40,
-      xpBonusBenjamin: 15,
-      xpBonusLottery: 20,
-      bonusVainqueurParRang: true
-    },
-    {
-      id: 2,
-      name: "Prélude Sudden Death",
-      startedAt: "2025-06-01T00:00:00Z",
-      endedAt: "2025-11-30T23:59:59Z",
-      xpPerDefeatedOpponent: 40,
-      xpBonusSimple: 10,
-      xpBonusDouble: 40,
-      xpBonusTriple: 80,
-      xpVampireMultiplier: 0.5,
-      xpSurvivorBase: 20,
-      xpBonusPoulidor: 10,
-      xpBonusJackpot: 15,
-      xpBonusEgalite: 10,
-      xpBonusTueurDeGeants: 50,
-      xpBonusPhenix: 25,
-      xpBonusSerialWinner: 30,
-      xpBonusBenjamin: 10,
-      xpBonusLottery: 15,
-      bonusVainqueurParRang: false
-    }
-  ],
-  matches: [
-    {
-      id: 1,
-      seasonId: 1,
-      playedAt: "2026-04-10T16:45:00Z",
-      participants: [
-        {
-          playerId: 3,
-          rank: 1,
-          scoreLeft: null,
-          xpBefore: 120,
-          xpEarned: 240,
-          finishType: "DOUBLE",
-          medals: ["TUEUR_DE_GEANTS"]
-        },
-        {
-          playerId: 1,
-          rank: 2,
-          scoreLeft: 8,
-          xpBefore: 450,
-          xpEarned: 40,
-          medals: ["POULIDOR"]
-        },
-        {
-          playerId: 4,
-          rank: 3,
-          scoreLeft: 55,
-          xpBefore: 10,
-          xpEarned: 45,
-          medals: ["JACKPOT"]
-        }
-      ]
-    },
-    {
-      id: 2,
-      seasonId: 1,
-      playedAt: "2026-05-20T21:00:00Z",
-      participants: [
-        {
-          playerId: 1,
-          rank: 1,
-          scoreLeft: null,
-          xpBefore: 530,
-          xpEarned: 210,
-          finishType: "TRIPLE",
-          medals: []
-        },
-        {
-          playerId: 2,
-          rank: 2,
-          scoreLeft: 22,
-          xpBefore: 200,
-          xpEarned: 45,
-          medals: ["JACKPOT"]
-        },
-        {
-          playerId: 5,
-          rank: 3,
-          scoreLeft: 22,
-          xpBefore: 50,
-          xpEarned: 55,
-          medals: ["JACKPOT", "EGALITE"]
-        }
-      ]
-    },
-    {
-      id: 3,
-      seasonId: 1,
-      playedAt: "2026-06-01T10:15:00Z",
-      participants: [
-        {
-          playerId: 1,
-          rank: 1,
-          scoreLeft: null,
-          xpBefore: 740,
-          xpEarned: 10500,
-          finishType: "TRIPLE",
-          medals: ["SERIAL_WINNER"]
-        },
-        {
-          playerId: 3,
-          rank: 2,
-          scoreLeft: 6,
-          xpBefore: 120,
-          xpEarned: 5300,
-          medals: ["POULIDOR"]
-        }
-      ]
-    }
-  ],
-  guilds: [
-    {
-      id: 1,
-      name: "La Divine Triade",
-      badgeIcon: "👑",
-      badgeColor: "#fbbf24",
-      createdAt: "2026-02-15T08:00:00Z",
-      memberIds: [1, 3]
-    },
-    {
-      id: 2,
-      name: "Les Poulidors Givrés",
-      badgeIcon: "🛡️",
-      badgeColor: "#3dc7ff",
-      createdAt: "2026-02-20T09:30:00Z",
-      memberIds: [2, 4, 5]
-    }
-  ]
+  players: [],
+  seasons: [],
+  matches: [],
+  guilds: []
 };
 
 class DartosDB {
   private state: DatabaseState;
   private listeners: (() => void)[] = [];
-  private isSeeding = false;
-  private hasLoadedFromFirestoreOnce = false;
   private notifyTimeout: any = null;
 
   constructor() {
@@ -248,8 +91,7 @@ class DartosDB {
       }
     } else {
       this.state = { ...INITIAL_STATE };
-      // Save initially to local storage to have a fallback cache immediately
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      this.saveLocalAndNotify();
     }
 
     // 2. Hydrate realtime updates from Firestore
@@ -276,12 +118,10 @@ class DartosDB {
       snap.forEach(d => {
         players.push(d.data() as Player);
       });
-      // Do not wipe our initial/cached players if Firestore returns empty on startup or while seeding
-      if (players.length === 0 && (this.isSeeding || !this.hasLoadedFromFirestoreOnce)) {
+      // If Firestore is empty but we have our initial memory state,
+      // let's keep the memory state rather than wiping it right away.
+      if (players.length === 0 && !localStorage.getItem(STORAGE_KEY)) {
         return;
-      }
-      if (players.length > 0) {
-        this.hasLoadedFromFirestoreOnce = true;
       }
       this.state.players = players.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
@@ -295,13 +135,6 @@ class DartosDB {
       snap.forEach(d => {
         seasons.push(d.data() as Season);
       });
-      if (seasons.length === 0) {
-        if (!this.isSeeding && !this.hasLoadedFromFirestoreOnce) {
-          this.seedDatabaseIfEmpty();
-        }
-        return;
-      }
-      this.hasLoadedFromFirestoreOnce = true;
       this.state.seasons = seasons.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
     }, (error) => {
@@ -314,13 +147,6 @@ class DartosDB {
       snap.forEach(d => {
         matches.push(d.data() as Match);
       });
-      // Do not wipe our initial/cached matches if Firestore returns empty on startup or while seeding
-      if (matches.length === 0 && (this.isSeeding || !this.hasLoadedFromFirestoreOnce)) {
-        return;
-      }
-      if (matches.length > 0) {
-        this.hasLoadedFromFirestoreOnce = true;
-      }
       this.state.matches = matches.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
     }, (error) => {
@@ -333,13 +159,6 @@ class DartosDB {
       snap.forEach(d => {
         guilds.push(d.data() as Guild);
       });
-      // Do not wipe our initial/cached guilds if Firestore returns empty on startup or while seeding
-      if (guilds.length === 0 && (this.isSeeding || !this.hasLoadedFromFirestoreOnce)) {
-        return;
-      }
-      if (guilds.length > 0) {
-        this.hasLoadedFromFirestoreOnce = true;
-      }
       this.state.guilds = guilds.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
     }, (error) => {
@@ -352,43 +171,15 @@ class DartosDB {
         const data = docSnap.data();
         this.state.adminPassword = data.adminPassword || "admin";
         this.saveLocalAndNotify();
+      } else {
+        // Safe creation of admin config without seeding any collections with mock objects
+        setDoc(doc(db, "adminSettings", "config"), { adminPassword: "admin" }).catch(e => {
+          console.warn("Error setting default admin password in Firestore", e);
+        });
       }
     }, (error) => {
       console.warn("Firestore adminSettings config onSnapshot error: ", error);
     });
-  }
-
-  private async seedDatabaseIfEmpty() {
-    if (this.isSeeding) return;
-    this.isSeeding = true;
-    try {
-      console.log("Firestore empty. Seeding initial data objects...");
-      // Seed players
-      for (const player of INITIAL_STATE.players) {
-        await setDoc(doc(db, "players", player.id.toString()), player);
-      }
-      // Seed seasons
-      for (const season of INITIAL_STATE.seasons) {
-        await setDoc(doc(db, "seasons", season.id.toString()), season);
-      }
-      // Seed matches
-      for (const match of INITIAL_STATE.matches) {
-        await setDoc(doc(db, "matches", match.id.toString()), match);
-      }
-      // Seed guilds
-      for (const guild of INITIAL_STATE.guilds) {
-        await setDoc(doc(db, "guilds", guild.id.toString()), guild);
-      }
-      // Seed admin settings
-      await setDoc(doc(db, "adminSettings", "config"), { adminPassword: "admin" });
-      console.log("Seeding finished successfully!");
-      this.hasLoadedFromFirestoreOnce = true;
-      this.saveLocalAndNotify();
-    } catch (e) {
-      console.error("Seeding error: ", e);
-    } finally {
-      this.isSeeding = false;
-    }
   }
 
   private saveLocalAndNotify() {
